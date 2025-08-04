@@ -172,9 +172,14 @@ class DatabaseParser:
         
         results = []
         
+        print(f"DEBUG: Parsing {len(self.rr_mappings)} RR mappings")
+        print(f"DEBUG: Current accounts: {len(current_accounts)} accounts")
+        print(f"DEBUG: Sample current accounts: {dict(list(current_accounts.items())[:5])}")
+        
         for mapping in self.rr_mappings:
             if not mapping.get('show_amount'):
                 # Header row - no calculation needed
+                print(f"DEBUG: Header row - {mapping['row_title']} (show_amount: {mapping.get('show_amount')})")
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
@@ -192,6 +197,9 @@ class DatabaseParser:
                 # Data row - calculate amounts for both years
                 current_amount = self.calculate_variable_value(mapping, current_accounts)
                 previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
+                
+                print(f"DEBUG: Data row - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
+                print(f"DEBUG: Mapping accounts: {mapping.get('accounts_included_start')}-{mapping.get('accounts_included_end')}")
                 
                 results.append({
                     'id': mapping['row_id'],

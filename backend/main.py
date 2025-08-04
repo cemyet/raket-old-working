@@ -63,9 +63,20 @@ async def upload_se_file(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, temp_file)
             temp_path = temp_file.name
         
-        # Read SE file content
-        with open(temp_path, 'r', encoding='utf-8') as f:
-            se_content = f.read()
+        # Read SE file content with encoding detection
+        encodings = ['iso-8859-1', 'windows-1252', 'utf-8', 'cp1252']
+        se_content = None
+        
+        for encoding in encodings:
+            try:
+                with open(temp_path, 'r', encoding=encoding) as f:
+                    se_content = f.read()
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if se_content is None:
+            raise HTTPException(status_code=500, detail="Kunde inte läsa SE-filen med någon av de försökta kodningarna")
         
         # Use the new database-driven parser
         parser = DatabaseParser()
