@@ -173,9 +173,7 @@ class DatabaseParser:
         if not formula:
             return 0.0
         
-        # Only log formula calculation for eget kapital or if it's a complex formula
-        if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
-            print(f"DEBUG: Calculating formula: {formula} (previous_year: {use_previous_year})")
+
         
         # Parse formula like "NETTOOMSATTNING + OVRIGA_INTEKNINGAR"
         # Use variable names instead of row references
@@ -190,26 +188,18 @@ class DatabaseParser:
             var_name = match.group(1)
             # Use the new helper method to get calculated values
             value = self._get_calculated_value(var_name, existing_results, use_previous_year)
-            # Only log for eget kapital or if value is non-zero
-            if "eget kapital" in str(mapping.get('row_title', '')).lower() or value != 0:
-                print(f"DEBUG: Found variable {var_name} = {value}")
+
             return str(value)
         
         # Replace all variable references
         formula_with_values = re.sub(pattern, replace_variable, formula)
         
-        # Only log formula evaluation for eget kapital or if it's a complex formula
-        if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
-            print(f"DEBUG: Formula with values: {formula_with_values}")
-        
         try:
             # Evaluate the formula
             result = eval(formula_with_values)
-            if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
-                print(f"DEBUG: Formula result: {result}")
             return float(result)
         except Exception as e:
-            print(f"DEBUG: Formula evaluation error: {e}")
+            print(f"Formula evaluation error: {e}")
             return 0.0
     
     def parse_rr_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
@@ -219,15 +209,12 @@ class DatabaseParser:
         
         results = []
         
-        print(f"DEBUG: Parsing {len(self.rr_mappings)} RR mappings")
-        print(f"DEBUG: Current accounts: {len(current_accounts)} accounts")
-        print(f"DEBUG: Sample current accounts: {dict(list(current_accounts.items())[:5])}")
+
         
         # First pass: Create all rows with direct calculations
         for mapping in self.rr_mappings:
             if not mapping.get('show_amount'):
                 # Header row - no calculation needed
-                print(f"DEBUG: Header row - {mapping['row_title']} (show_amount: {mapping.get('show_amount')})")
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
@@ -253,9 +240,7 @@ class DatabaseParser:
                     current_amount = self.calculate_variable_value(mapping, current_accounts)
                     previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
                 
-                print(f"DEBUG: Data row - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
-                print(f"DEBUG: Mapping accounts: {mapping.get('accounts_included_start')}-{mapping.get('accounts_included_end')}")
-                print(f"DEBUG: Is calculated: {mapping.get('is_calculated')}, Formula: {mapping.get('calculation_formula')}")
+
                 
                 results.append({
                     'id': mapping['row_id'],
@@ -311,19 +296,14 @@ class DatabaseParser:
                     current_amount = item.get('current_amount')
                     if current_amount is not None:  # This includes 0, -0, and other values
                         calculated_values[item['variable_name']] = current_amount
-                        print(f"DEBUG: Storing calculated value: {item['variable_name']} = {current_amount}")
             
             if calculated_values:
-                print(f"DEBUG: Storing {len(calculated_values)} calculated values for {report_type}: {calculated_values}")
-                
                 # Store in a temporary table or update existing records
                 # This will be used when formulas reference these variables
                 for var_name, value in calculated_values.items():
                     # You might want to store this in a separate table or update existing records
-                    # For now, we'll just log it and use it in memory
+                    # For now, we'll just use it in memory
                     pass
-            else:
-                print(f"DEBUG: No calculated values to store for {report_type}")
                     
         except Exception as e:
             print(f"Error storing calculated values: {e}")
@@ -396,24 +376,12 @@ class DatabaseParser:
         calculated_mappings.sort(key=lambda x: int(x[1]['row_id']))
         
         for i, mapping in calculated_mappings:
-                # Special debugging for "Summa eget kapital"
-                if "eget kapital" in mapping['row_title'].lower():
-                    print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL (BR) ===")
-                    print(f"DEBUG: Formula: {mapping.get('calculation_formula')}")
-                    print(f"DEBUG: Variable name: {mapping.get('variable_name')}")
-                
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
                 previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
-                
-                print(f"DEBUG: BR Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
                 
                 # Update the result
                 results[i]['current_amount'] = current_amount
                 results[i]['previous_amount'] = previous_amount
-                
-                # Debug: Check if this is row 382
-                if mapping['row_id'] == '382':
-                    print(f"DEBUG: Updated row 382 - current_amount: {current_amount}, variable_name: {mapping.get('variable_name')}")
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'BR')
@@ -421,42 +389,7 @@ class DatabaseParser:
         # Sort results by ID to ensure correct order
         results.sort(key=lambda x: int(x['id']))
         
-        # Debug: Check if row 382 is in the final results
-        row_382_final = None
-        for item in results:
-            if item['id'] == '382':
-                row_382_final = item
-                break
-        
-        if row_382_final:
-            print(f"DEBUG: Row 382 in final results: {row_382_final['label']} = {row_382_final['current_amount']}")
-        else:
-            print(f"DEBUG: ❌ Row 382 NOT found in final results!")
-            print(f"DEBUG: Available row IDs: {[item['id'] for item in results if int(item['id']) >= 380 and int(item['id']) <= 385]}")
-            
-            # Force add row 382 if it's missing
-            print(f"DEBUG: 🔧 FORCING row 382 to be added to results!")
-            # Get row 382 from database mappings
-            for mapping in self.br_mappings:
-                if mapping['row_id'] == '382':
-                    forced_row = {
-                        'id': '382',
-                        'label': 'Summa eget kapital',
-                        'current_amount': 956989.0,  # Force the correct value
-                        'previous_amount': 956989.0,
-                        'level': self._get_level_from_style(mapping['style']),
-                        'section': 'BR',
-                        'type': self._get_balance_type(mapping),
-                        'bold': mapping['style'] in ['H0', 'H1', 'H2', 'H4'],
-                        'style': mapping['style'],
-                        'variable_name': 'SumEgetKapital',
-                        'is_calculated': True,
-                        'calculation_formula': 'SumBundetEgetKapital+SumFrittEgetKapital',
-                        'show_amount': True
-                    }
-                    results.append(forced_row)
-                    print(f"DEBUG: ✅ Added forced row 382: {forced_row}")
-                    break
+
         
         return results
     
