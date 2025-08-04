@@ -11,6 +11,27 @@ interface ProcessedDataViewProps {
     fiscalYearMinus1?: number;
     fiscalYearString: string;
     endDate: string;
+    // New database-driven parser format
+    rr_data?: Array<{
+      id: string;
+      label: string;
+      current_amount: number | null;
+      previous_amount: number | null;
+      level: number;
+      section: string;
+      bold?: boolean;
+    }>;
+    br_data?: Array<{
+      id: string;
+      label: string;
+      current_amount: number | null;
+      previous_amount: number | null;
+      level: number;
+      section: string;
+      type: 'asset' | 'liability' | 'equity';
+      bold?: boolean;
+    }>;
+    // Legacy format (fallback)
     incomeStatementYear0?: Array<{
       id: string;
       label: string;
@@ -79,29 +100,47 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
     console.log('Generate PDF for report:', reportId);
   };
 
+  // Helper function to normalize data to new format
+  const normalizeItem = (item: any) => {
+    if (item.current_amount !== undefined) {
+      // Already in new format
+      return item;
+    } else if (item.amount !== undefined) {
+      // Old format - convert to new format
+      return {
+        ...item,
+        current_amount: item.amount,
+        previous_amount: null
+      };
+    }
+    return item;
+  };
+
   // Use new data format or fallback to legacy
-  const incomeStatementYear0 = data.incomeStatementYear0 || data.incomeStatement?.map(item => ({
+  const incomeStatementYear0 = (data.rr_data || data.incomeStatementYear0 || data.incomeStatement?.map(item => ({
     id: item.account,
     label: item.description,
-    amount: item.amount,
+    current_amount: item.amount,
+    previous_amount: null,
     level: 1,
     section: 'Legacy',
     bold: false
-  })) || [];
+  })) || []).map(normalizeItem);
   
-  const incomeStatementYearMinus1 = data.incomeStatementYearMinus1 || [];
+  const incomeStatementYearMinus1 = (data.incomeStatementYearMinus1 || []).map(normalizeItem);
   
-  const balanceSheetYear0 = data.balanceSheetYear0 || data.balanceSheet?.map(item => ({
+  const balanceSheetYear0 = (data.br_data || data.balanceSheetYear0 || data.balanceSheet?.map(item => ({
     id: item.account,
     label: item.description,
-    amount: item.amount,
+    current_amount: item.amount,
+    previous_amount: null,
     level: 1,
     section: 'Legacy',
     type: item.type,
     bold: false
-  })) || [];
+  })) || []).map(normalizeItem);
   
-  const balanceSheetYearMinus1 = data.balanceSheetYearMinus1 || [];
+  const balanceSheetYearMinus1 = (data.balanceSheetYearMinus1 || []).map(normalizeItem);
 
   // Group balance sheet items by type for both years
   const assetsYear0 = balanceSheetYear0.filter(item => item.type === 'asset');
@@ -182,18 +221,18 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
                     <p className={item.bold ? "font-bold" : ""}>{item.label}</p>
                   </div>
                   <div className="text-right">
-                    {item.amount !== null ? (
-                      <Badge variant={item.amount >= 0 ? "default" : "destructive"}>
-                        {formatAmount(item.amount)}
+                    {item.current_amount !== null ? (
+                      <Badge variant={item.current_amount >= 0 ? "default" : "destructive"}>
+                        {formatAmount(item.current_amount)}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
                   </div>
                   <div className="text-right">
-                    {itemYearMinus1 && itemYearMinus1.amount !== null ? (
-                      <Badge variant={itemYearMinus1.amount >= 0 ? "default" : "destructive"}>
-                        {formatAmount(itemYearMinus1.amount)}
+                    {itemYearMinus1 && itemYearMinus1.current_amount !== null ? (
+                      <Badge variant={itemYearMinus1.current_amount >= 0 ? "default" : "destructive"}>
+                        {formatAmount(itemYearMinus1.current_amount)}
                       </Badge>
                     ) : (
                       <span className="text-muted-foreground">-</span>
@@ -236,12 +275,12 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(item.amount)}
+                          {formatAmount(item.current_amount)}
                         </Badge>
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(itemYearMinus1?.amount || 0)}
+                          {formatAmount(itemYearMinus1?.current_amount || 0)}
                         </Badge>
                       </div>
                     </div>
@@ -269,12 +308,12 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(item.amount)}
+                          {formatAmount(item.current_amount)}
                         </Badge>
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(itemYearMinus1?.amount || 0)}
+                          {formatAmount(itemYearMinus1?.current_amount || 0)}
                         </Badge>
                       </div>
                     </div>
@@ -300,12 +339,12 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(item.amount)}
+                          {formatAmount(item.current_amount)}
                         </Badge>
                       </div>
                       <div className="text-right">
                         <Badge variant="outline">
-                          {formatAmount(itemYearMinus1?.amount || 0)}
+                          {formatAmount(itemYearMinus1?.current_amount || 0)}
                         </Badge>
                       </div>
                     </div>

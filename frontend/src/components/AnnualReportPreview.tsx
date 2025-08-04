@@ -128,9 +128,14 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   const brData = seFileData?.br_data || [];
   const companyInfo = seFileData?.company_info || {};
   
-  // Fallback to calculated metrics for legacy data
-  const seMetrics = !rrData.length && seFileData ? extractKeyMetrics(seFileData) : null;
-  const rrResults = !rrData.length && seFileData ? calculateRRSums(seFileData) : [];
+  // Debug logging
+  console.log('AnnualReportPreview - seFileData:', seFileData);
+  console.log('AnnualReportPreview - rrData length:', rrData.length);
+  console.log('AnnualReportPreview - brData length:', brData.length);
+  console.log('AnnualReportPreview - sample RR data:', rrData.slice(0, 3));
+  console.log('AnnualReportPreview - sample BR data:', brData.slice(0, 3));
+  
+  // No fallback needed - database-driven parser provides all data
 
   const getPreviewContent = () => {
     if (currentStep === 0) {
@@ -216,7 +221,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">
-                      {item.amount !== null ? `${formatAmount(item.amount)} kr` : ''}
+                      {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
                     </span>
                     <span className="text-right font-medium">
                       {itemYearMinus1 && itemYearMinus1.amount !== null ? `${formatAmount(itemYearMinus1.amount)} kr` : ''}
@@ -262,7 +267,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">
-                      {item.amount !== null ? `${formatAmount(item.amount)} kr` : ''}
+                      {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
                     </span>
                     <span className="text-right font-medium">
                       {itemYearMinus1 && itemYearMinus1.amount !== null ? `${formatAmount(itemYearMinus1.amount)} kr` : ''}

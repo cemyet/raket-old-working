@@ -223,6 +223,10 @@ export function AnnualReportChat() {
       
       // Convert new format to old format and store for preview
       const convertedData = convertNewParserFormat(result);
+      console.log('Converted data for preview:', convertedData.data);
+      console.log('Sample RR data:', convertedData.data.rr_data?.slice(0, 3));
+      console.log('Sample BR data:', convertedData.data.br_data?.slice(0, 3));
+      
       setCompanyData(prev => ({ 
         ...prev, 
         seFileData: convertedData.data
