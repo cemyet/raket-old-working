@@ -166,9 +166,22 @@ async def test_parser(file: UploadFile = File(...)):
         
         print(f"Created temp file: {temp_path}")
         
-        # Read SE file content
-        with open(temp_path, 'r', encoding='utf-8') as f:
-            se_content = f.read()
+        # Read SE file content - try different encodings
+        se_content = None
+        encodings_to_try = ['iso-8859-1', 'windows-1252', 'utf-8', 'cp1252']
+        
+        for encoding in encodings_to_try:
+            try:
+                with open(temp_path, 'r', encoding=encoding) as f:
+                    se_content = f.read()
+                print(f"Successfully read file with {encoding} encoding")
+                break
+            except UnicodeDecodeError as e:
+                print(f"Failed to read with {encoding} encoding: {e}")
+                continue
+        
+        if se_content is None:
+            raise Exception("Could not read file with any supported encoding")
         
         print(f"Read {len(se_content)} characters from file")
         
