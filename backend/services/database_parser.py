@@ -167,13 +167,13 @@ class DatabaseParser:
         # Most accounts need to be reversed for proper display
         return -total
     
-    def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]]) -> float:
+    def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]], use_previous_year: bool = False) -> float:
         """Calculate value using a formula that references variable names"""
         formula = mapping.get('calculation_formula', '')
         if not formula:
             return 0.0
         
-        print(f"DEBUG: Calculating formula: {formula}")
+        print(f"DEBUG: Calculating formula: {formula} (previous_year: {use_previous_year})")
         
         # Parse formula like "NETTOOMSATTNING + OVRIGA_INTEKNINGAR"
         # Use variable names instead of row references
@@ -190,7 +190,8 @@ class DatabaseParser:
             # Find the variable in existing results
             for result in existing_results:
                 if result.get('variable_name') == var_name:
-                    value = result.get('current_amount', 0) or 0
+                    # Use previous_amount for previous year calculations
+                    value = result.get('previous_amount' if use_previous_year else 'current_amount', 0) or 0
                     print(f"DEBUG: Found variable {var_name} = {value}")
                     return str(value)
             print(f"DEBUG: Variable {var_name} not found, using 0")
@@ -273,8 +274,8 @@ class DatabaseParser:
         
         for i, mapping in enumerate(self.rr_mappings):
             if mapping.get('show_amount') and mapping.get('is_calculated'):
-                current_amount = self.calculate_formula_value(mapping, current_accounts, results)
-                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
+                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
                 
                 print(f"DEBUG: Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
                 
@@ -363,8 +364,8 @@ class DatabaseParser:
         # Second pass: Calculate formulas using all available data
         for i, mapping in enumerate(self.br_mappings):
             if mapping.get('show_amount') and mapping.get('is_calculated'):
-                current_amount = self.calculate_formula_value(mapping, current_accounts, results)
-                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
+                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
                 
                 print(f"DEBUG: BR Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
                 
