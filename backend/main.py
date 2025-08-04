@@ -24,7 +24,12 @@ app = FastAPI(
 # CORS middleware för React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://raketrapport.se"],
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:8080",
+        "https://raketrapport.se",
+        "https://raket-arsredovisning.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
