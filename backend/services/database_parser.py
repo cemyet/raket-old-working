@@ -44,7 +44,8 @@ class DatabaseParser:
     
     def parse_account_balances(self, se_content: str) -> Dict[str, float]:
         """Parse account balances from SE file content using the correct format"""
-        accounts = {}
+        current_accounts = {}
+        previous_accounts = {}
         
         # Parse SE file content to extract account balances
         lines = se_content.split('\n')
@@ -52,7 +53,7 @@ class DatabaseParser:
         for line in lines:
             line = line.strip()
             
-            # Handle BR accounts: #UB (Uppgjord Balans) - current year
+            # Handle BR accounts: #UB (Uppgjord Balans) - both years
             if line.startswith('#UB '):
                 parts = line.split()
                 if len(parts) >= 4:
@@ -62,11 +63,13 @@ class DatabaseParser:
                         balance = float(parts[3])
                         
                         if fiscal_year == 0:  # Current year
-                            accounts[account_id] = balance
+                            current_accounts[account_id] = balance
+                        elif fiscal_year == -1:  # Previous year
+                            previous_accounts[account_id] = balance
                     except (ValueError, TypeError):
                         continue
                         
-            # Handle RR accounts: #RES (Resultat) - current year
+            # Handle RR accounts: #RES (Resultat) - both years
             elif line.startswith('#RES '):
                 parts = line.split()
                 if len(parts) >= 4:
@@ -76,7 +79,9 @@ class DatabaseParser:
                         balance = float(parts[3])
                         
                         if fiscal_year == 0:  # Current year
-                            accounts[account_id] = balance
+                            current_accounts[account_id] = balance
+                        elif fiscal_year == -1:  # Previous year
+                            previous_accounts[account_id] = balance
                     except (ValueError, TypeError):
                         continue
                         
@@ -87,15 +92,17 @@ class DatabaseParser:
                     account_id = parts[1]
                     try:
                         balance = float(parts[2])
-                        accounts[account_id] = balance
+                        current_accounts[account_id] = balance
                     except ValueError:
                         continue
         
-        print(f"Parsed {len(accounts)} accounts from SE file")
-        if accounts:
-            print(f"Sample accounts: {dict(list(accounts.items())[:5])}")
+        print(f"Parsed {len(current_accounts)} current year accounts, {len(previous_accounts)} previous year accounts")
+        if current_accounts:
+            print(f"Sample current accounts: {dict(list(current_accounts.items())[:5])}")
+        if previous_accounts:
+            print(f"Sample previous accounts: {dict(list(previous_accounts.items())[:5])}")
         
-        return accounts
+        return current_accounts, previous_accounts
     
     def calculate_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float]) -> float:
         """Calculate value for a specific variable based on its mapping"""
@@ -158,7 +165,7 @@ class DatabaseParser:
         
         return total
     
-    def parse_rr_data(self, accounts: Dict[str, float]) -> List[Dict[str, Any]]:
+    def parse_rr_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
         """Parse RR (Resultaträkning) data using database mappings"""
         if not self.rr_mappings:
             return []
@@ -171,7 +178,8 @@ class DatabaseParser:
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
-                    'amount': None,
+                    'current_amount': None,
+                    'previous_amount': None,
                     'level': self._get_level_from_style(mapping['style']),
                     'section': 'RR',
                     'bold': mapping['style'] in ['H0', 'H1', 'H2', 'H4'],
@@ -181,13 +189,15 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula']
                 })
             else:
-                # Data row - calculate amount
-                amount = self.calculate_variable_value(mapping, accounts)
+                # Data row - calculate amounts for both years
+                current_amount = self.calculate_variable_value(mapping, current_accounts)
+                previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
                 
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
-                    'amount': amount,
+                    'current_amount': current_amount,
+                    'previous_amount': previous_amount,
                     'level': self._get_level_from_style(mapping['style']),
                     'section': 'RR',
                     'bold': mapping['style'] in ['H0', 'H1', 'H2', 'H4'],
@@ -199,7 +209,7 @@ class DatabaseParser:
         
         return results
     
-    def parse_br_data(self, accounts: Dict[str, float]) -> List[Dict[str, Any]]:
+    def parse_br_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
         """Parse BR (Balansräkning) data using database mappings"""
         if not self.br_mappings:
             return []
@@ -212,7 +222,8 @@ class DatabaseParser:
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
-                    'amount': None,
+                    'current_amount': None,
+                    'previous_amount': None,
                     'level': self._get_level_from_style(mapping['style']),
                     'section': 'BR',
                     'type': self._get_balance_type(mapping),
@@ -223,13 +234,15 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula']
                 })
             else:
-                # Data row - calculate amount
-                amount = self.calculate_variable_value(mapping, accounts)
+                # Data row - calculate amounts for both years
+                current_amount = self.calculate_variable_value(mapping, current_accounts)
+                previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
                 
                 results.append({
                     'id': mapping['row_id'],
                     'label': mapping['row_title'],
-                    'amount': amount,
+                    'current_amount': current_amount,
+                    'previous_amount': previous_amount,
                     'level': self._get_level_from_style(mapping['style']),
                     'section': 'BR',
                     'type': self._get_balance_type(mapping),

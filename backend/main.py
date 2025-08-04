@@ -189,12 +189,13 @@ async def test_parser(file: UploadFile = File(...)):
         parser = DatabaseParser()
         
         # Parse data
-        accounts = parser.parse_account_balances(se_content)
+        current_accounts, previous_accounts = parser.parse_account_balances(se_content)
         company_info = parser.extract_company_info(se_content)
-        rr_data = parser.parse_rr_data(accounts)
-        br_data = parser.parse_br_data(accounts)
+        rr_data = parser.parse_rr_data(current_accounts, previous_accounts)
+        br_data = parser.parse_br_data(current_accounts, previous_accounts)
         
-        print(f"Parsed {len(accounts)} accounts, {len(rr_data)} RR items, {len(br_data)} BR items")
+        print(f"Parsed {len(current_accounts)} current year accounts, {len(previous_accounts)} previous year accounts")
+        print(f"Generated {len(rr_data)} RR items, {len(br_data)} BR items")
         
         # Rensa upp temporär fil
         os.unlink(temp_path)
@@ -202,8 +203,10 @@ async def test_parser(file: UploadFile = File(...)):
         return {
             "success": True,
             "company_info": company_info,
-            "accounts_count": len(accounts),
-            "accounts_sample": dict(list(accounts.items())[:10]),  # First 10 accounts
+            "current_accounts_count": len(current_accounts),
+            "previous_accounts_count": len(previous_accounts),
+            "current_accounts_sample": dict(list(current_accounts.items())[:10]),  # First 10 current accounts
+            "previous_accounts_sample": dict(list(previous_accounts.items())[:10]),  # First 10 previous accounts
             "rr_count": len(rr_data),
             "rr_sample": rr_data[:5],  # First 5 RR items
             "br_count": len(br_data),
