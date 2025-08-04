@@ -190,6 +190,7 @@ async def test_parser(file: UploadFile = File(...)):
         
         # Parse data
         accounts = parser.parse_account_balances(se_content)
+        company_info = parser.extract_company_info(se_content)
         rr_data = parser.parse_rr_data(accounts)
         br_data = parser.parse_br_data(accounts)
         
@@ -200,6 +201,7 @@ async def test_parser(file: UploadFile = File(...)):
         
         return {
             "success": True,
+            "company_info": company_info,
             "accounts_count": len(accounts),
             "accounts_sample": dict(list(accounts.items())[:10]),  # First 10 accounts
             "rr_count": len(rr_data),

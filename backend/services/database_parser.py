@@ -43,14 +43,45 @@ class DatabaseParser:
             self.br_mappings = []
     
     def parse_account_balances(self, se_content: str) -> Dict[str, float]:
-        """Parse account balances from SE file content"""
+        """Parse account balances from SE file content using the correct format"""
         accounts = {}
         
         # Parse SE file content to extract account balances
         lines = se_content.split('\n')
         
         for line in lines:
-            if line.startswith('#VER'):
+            line = line.strip()
+            
+            # Handle BR accounts: #UB (Uppgjord Balans) - current year
+            if line.startswith('#UB '):
+                parts = line.split()
+                if len(parts) >= 4:
+                    try:
+                        fiscal_year = int(parts[1])
+                        account_id = parts[2]
+                        balance = float(parts[3])
+                        
+                        if fiscal_year == 0:  # Current year
+                            accounts[account_id] = balance
+                    except (ValueError, TypeError):
+                        continue
+                        
+            # Handle RR accounts: #RES (Resultat) - current year
+            elif line.startswith('#RES '):
+                parts = line.split()
+                if len(parts) >= 4:
+                    try:
+                        fiscal_year = int(parts[1])
+                        account_id = parts[2]
+                        balance = float(parts[3])
+                        
+                        if fiscal_year == 0:  # Current year
+                            accounts[account_id] = balance
+                    except (ValueError, TypeError):
+                        continue
+                        
+            # Handle legacy #VER format (fallback)
+            elif line.startswith('#VER'):
                 parts = line.split()
                 if len(parts) >= 3:
                     account_id = parts[1]
@@ -59,6 +90,10 @@ class DatabaseParser:
                         accounts[account_id] = balance
                     except ValueError:
                         continue
+        
+        print(f"Parsed {len(accounts)} accounts from SE file")
+        if accounts:
+            print(f"Sample accounts: {dict(list(accounts.items())[:5])}")
         
         return accounts
     
@@ -294,3 +329,34 @@ class DatabaseParser:
         except Exception as e:
             print(f"Error retrieving financial data: {e}")
             return {'rr_data': {}, 'br_data': {}}
+
+    def extract_company_info(self, se_content: str) -> Dict[str, Any]:
+        """Extract company information from SE file headers"""
+        company_info = {}
+        lines = se_content.split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            
+            if line.startswith('#FNAMN'):
+                # Company name: #FNAMN "Company Name"
+                parts = line.split('"', 2)
+                if len(parts) >= 2:
+                    company_info['company_name'] = parts[1]
+                    
+            elif line.startswith('#ORGNR'):
+                # Organization number: #ORGNR 556610-3643
+                parts = line.split()
+                if len(parts) >= 2:
+                    company_info['org_number'] = parts[1]
+                    
+            elif line.startswith('#RAR'):
+                # Fiscal year: #RAR 0 20240101 20241231
+                parts = line.split()
+                if len(parts) >= 4 and parts[1] == '0':  # Current year
+                    company_info['fiscal_year'] = int(parts[2][:4])  # Extract year from date
+                    company_info['start_date'] = parts[2]
+                    company_info['end_date'] = parts[3]
+        
+        print(f"Extracted company info: {company_info}")
+        return company_info
