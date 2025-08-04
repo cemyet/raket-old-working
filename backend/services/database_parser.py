@@ -180,8 +180,9 @@ class DatabaseParser:
         import re
         
         # Replace variable references with their calculated values
-        # Formula format: variable names like NETTOOMSATTNING, OVRIGA_INTEKNINGAR, etc.
-        pattern = r'([A-Z_]+)'
+        # Formula format: variable names like SumRorelseintakter, SumRorelsekostnader, etc.
+        # Use word boundaries to match complete variable names
+        pattern = r'\b([A-Z][a-zA-Z0-9_]*)\b'
         
         def replace_variable(match):
             var_name = match.group(1)
