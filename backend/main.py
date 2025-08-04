@@ -52,7 +52,7 @@ async def upload_se_file(file: UploadFile = File(...)):
     """
     Laddar upp en .SE-fil och extraherar grundläggande information
     """
-    if not file.filename.endswith('.se'):
+    if not file.filename.lower().endswith('.se'):
         raise HTTPException(status_code=400, detail="Endast .SE-filer accepteras")
     
     try:
@@ -153,8 +153,10 @@ async def test_parser(file: UploadFile = File(...)):
     """
     Test endpoint for the new database-driven parser
     """
-    if not file.filename.endswith('.se'):
-        raise HTTPException(status_code=400, detail="Endast .SE-filer accepteras")
+    print(f"Received file: {file.filename}, size: {file.size if hasattr(file, 'size') else 'unknown'}")
+    
+    if not file.filename.lower().endswith('.se'):
+        raise HTTPException(status_code=400, detail=f"Endast .SE-filer accepteras. Fick: {file.filename}")
     
     try:
         # Skapa temporär fil
@@ -162,9 +164,13 @@ async def test_parser(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, temp_file)
             temp_path = temp_file.name
         
+        print(f"Created temp file: {temp_path}")
+        
         # Read SE file content
         with open(temp_path, 'r', encoding='utf-8') as f:
             se_content = f.read()
+        
+        print(f"Read {len(se_content)} characters from file")
         
         # Initialize parser
         parser = DatabaseParser()
@@ -173,6 +179,8 @@ async def test_parser(file: UploadFile = File(...)):
         accounts = parser.parse_account_balances(se_content)
         rr_data = parser.parse_rr_data(accounts)
         br_data = parser.parse_br_data(accounts)
+        
+        print(f"Parsed {len(accounts)} accounts, {len(rr_data)} RR items, {len(br_data)} BR items")
         
         # Rensa upp temporär fil
         os.unlink(temp_path)
@@ -189,6 +197,7 @@ async def test_parser(file: UploadFile = File(...)):
         }
         
     except Exception as e:
+        print(f"Error in test_parser: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Fel vid parser test: {str(e)}")
 
 if __name__ == "__main__":
