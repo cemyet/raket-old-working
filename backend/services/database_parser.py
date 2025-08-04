@@ -185,10 +185,14 @@ class DatabaseParser:
         
         def replace_variable(match):
             var_name = match.group(1)
+            print(f"DEBUG: Looking for variable: {var_name}")
             # Find the variable in existing results
             for result in existing_results:
                 if result.get('variable_name') == var_name:
-                    return str(result.get('current_amount', 0) or 0)
+                    value = result.get('current_amount', 0) or 0
+                    print(f"DEBUG: Found variable {var_name} = {value}")
+                    return str(value)
+            print(f"DEBUG: Variable {var_name} not found, using 0")
             return '0'  # Default if not found
         
         # Replace all variable references
@@ -264,6 +268,8 @@ class DatabaseParser:
                 })
         
         # Second pass: Calculate formulas using all available data
+        print(f"DEBUG: Available variables in results: {[r.get('variable_name') for r in results if r.get('variable_name')]}")
+        
         for i, mapping in enumerate(self.rr_mappings):
             if mapping.get('show_amount') and mapping.get('is_calculated'):
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results)
