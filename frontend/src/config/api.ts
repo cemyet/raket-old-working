@@ -1,7 +1,7 @@
 // API Configuration
 // Change this URL when you deploy the backend
 export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://your-backend-url.com'  // Replace with your deployed backend URL
+  ? 'https://your-railway-app-name.railway.app'  // Replace with your Railway URL
   : 'http://localhost:8000';
 
 export const API_ENDPOINTS = {
