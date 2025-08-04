@@ -41,7 +41,8 @@ export function AnnualReportChat() {
 
   // Debug logging
   console.log('AnnualReportChat render - currentStep:', currentStep, 'showFileUpload:', showFileUpload);
-          console.log('🔍 AnnualReportPreview will render:', currentStep >= 0 || companyData.seFileData);
+  console.log('🔍 AnnualReportPreview will render:', currentStep >= 0 || companyData.seFileData);
+  
   const [messages, setMessages] = useState([
     {
       text: "Hej! 👋 Välkommen till RaketRapport! Jag hjälper dig att skapa din årsredovisning på bara 5 minuter.",
