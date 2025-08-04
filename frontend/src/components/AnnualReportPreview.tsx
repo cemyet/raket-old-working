@@ -64,14 +64,16 @@ interface CompanyData {
     rr_data?: Array<{
       id: string;
       label: string;
-      amount: number | null;
+      current_amount: number | null;
+      previous_amount: number | null;
       level: number;
       bold: boolean;
     }>;
     br_data?: Array<{
       id: string;
       label: string;
-      amount: number | null;
+      current_amount: number | null;
+      previous_amount: number | null;
       level: number;
       bold: boolean;
     }>;
@@ -138,7 +140,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   // No fallback needed - database-driven parser provides all data
 
   const getPreviewContent = () => {
-    // Show preview if we have data, regardless of currentStep
+    // Show empty state only if we have no data and are at step 0
     if (currentStep === 0 && !rrData.length && !brData.length) {
       return (
         <div className="text-center py-20">
@@ -148,6 +150,21 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             <h3 className="text-lg font-medium mb-2">Årsredovisning</h3>
             <p className="text-sm">Din rapport kommer att visas här när du börjar processen</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Show preview content if we have data, regardless of currentStep
+    if (!rrData.length && !brData.length) {
+      return (
+        <div className="text-center py-20">
+          <div className="text-muted-foreground mb-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-lg bg-muted flex items-center justify-center">
+              ⏳
+            </div>
+            <h3 className="text-lg font-medium mb-2">Laddar data...</h3>
+            <p className="text-sm">Bearbetar SE-fil data</p>
           </div>
         </div>
       );
@@ -180,7 +197,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
         </div>
 
         {/* Financial Results Section */}
-        {currentStep >= 0.5 && (
+        {(
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground border-b pb-2">Resultaträkning</h2>
             
@@ -209,8 +226,6 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Income Statement Rows */}
             {rrData.length > 0 ? (
               rrData.map((item, index) => {
-                // Find corresponding year -1 data
-                const itemYearMinus1 = companyData.incomeStatementYearMinus1?.find(y1 => y1.id === item.id);
                 return (
                   <div 
                     key={index} 
@@ -225,7 +240,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                       {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
                     </span>
                     <span className="text-right font-medium">
-                      {itemYearMinus1 && itemYearMinus1.amount !== null ? `${formatAmount(itemYearMinus1.amount)} kr` : ''}
+                      {item.previous_amount !== null ? `${formatAmount(item.previous_amount)} kr` : ''}
                     </span>
                   </div>
                 );
@@ -240,7 +255,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
         )}
 
         {/* Balance Sheet Section */}
-        {currentStep >= 0.5 && (
+        {(
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground border-b pb-2">Balansräkning</h2>
             
@@ -254,9 +269,6 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Balance Sheet Rows */}
             {brData.length > 0 ? (
               brData.map((item, index) => {
-                // Find corresponding year -1 data
-                const itemYearMinus1 = companyData.balanceSheetYearMinus1?.find(y1 => y1.id === item.id);
-                
                 return (
                   <div 
                     key={index} 
@@ -271,7 +283,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                       {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
                     </span>
                     <span className="text-right font-medium">
-                      {itemYearMinus1 && itemYearMinus1.amount !== null ? `${formatAmount(itemYearMinus1.amount)} kr` : ''}
+                      {item.previous_amount !== null ? `${formatAmount(item.previous_amount)} kr` : ''}
                     </span>
                   </div>
                 );
