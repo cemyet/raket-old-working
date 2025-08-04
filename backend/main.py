@@ -28,7 +28,9 @@ app.add_middleware(
         "http://localhost:3000", 
         "http://localhost:8080",
         "https://raketrapport.se",
-        "https://raket-arsredovisning.vercel.app"
+        "https://www.raketrapport.se",
+        "https://raket-arsredovisning.vercel.app",
+        "https://raketrapport-production.up.railway.app"  # Railway backend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
