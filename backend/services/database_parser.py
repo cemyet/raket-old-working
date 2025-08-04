@@ -417,6 +417,19 @@ class DatabaseParser:
         # Sort results by ID to ensure correct order
         results.sort(key=lambda x: int(x['id']))
         
+        # Debug: Check if row 382 is in the final results
+        row_382_final = None
+        for item in results:
+            if item['id'] == '382':
+                row_382_final = item
+                break
+        
+        if row_382_final:
+            print(f"DEBUG: Row 382 in final results: {row_382_final['label']} = {row_382_final['current_amount']}")
+        else:
+            print(f"DEBUG: ❌ Row 382 NOT found in final results!")
+            print(f"DEBUG: Available row IDs: {[item['id'] for item in results if int(item['id']) >= 380 and int(item['id']) <= 385]}")
+        
         return results
     
     def _get_level_from_style(self, style: str) -> int:
