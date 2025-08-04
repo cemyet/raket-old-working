@@ -177,6 +177,38 @@ export function AnnualReportChat() {
     // Här skulle vi skicka till backend för PDF-generering
   };
 
+  const convertNewParserFormat = (data: any) => {
+    // Convert new parser format to old format for frontend compatibility
+    const converted = {
+      ...data,
+      data: {
+        ...data,
+        // Convert RR data from current_amount/previous_amount to amount
+        rr_data: data.rr_sample?.map((item: any) => ({
+          ...item,
+          amount: item.current_amount || item.amount,
+          previous_amount: item.previous_amount
+        })) || [],
+        // Convert BR data from current_amount/previous_amount to amount
+        br_data: data.br_sample?.map((item: any) => ({
+          ...item,
+          amount: item.current_amount || item.amount,
+          previous_amount: item.previous_amount
+        })) || [],
+        // Convert account balances
+        accountBalances: data.current_accounts_sample || {},
+        previousAccountBalances: data.previous_accounts_sample || {},
+        // Add company info
+        company_info: data.company_info || {},
+        current_accounts_count: data.current_accounts_count || 0,
+        previous_accounts_count: data.previous_accounts_count || 0
+      }
+    };
+    
+    console.log('Converted parser data:', converted);
+    return converted;
+  };
+
   const testParser = async (file: File) => {
     try {
       addMessage("🧪 Testar ny databas-driven parser...", true, "🔬");
@@ -184,10 +216,17 @@ export function AnnualReportChat() {
       const result = await apiService.testParser(file);
       
       addMessage(`✅ Parser test lyckades!`, true, "✅");
-      addMessage(`📊 Hittade ${result.accounts_count} konton`, true, "📊");
+      addMessage(`📊 Hittade ${result.current_accounts_count} konton`, true, "📊");
       addMessage(`📈 ${result.rr_count} RR-poster, ${result.br_count} BR-poster`, true, "📈");
       
       console.log('Parser test result:', result);
+      
+      // Convert new format to old format and store for preview
+      const convertedData = convertNewParserFormat(result);
+      setCompanyData(prev => ({ 
+        ...prev, 
+        seFileData: convertedData.data
+      }));
       
     } catch (error) {
       console.error('Parser test failed:', error);

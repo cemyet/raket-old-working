@@ -8,8 +8,11 @@ export interface UploadResponse {
 
 export interface TestParserResponse {
   success: boolean;
-  accounts_count: number;
-  accounts_sample: Record<string, number>;
+  company_info: any;
+  current_accounts_count: number;
+  previous_accounts_count: number;
+  current_accounts_sample: Record<string, number>;
+  previous_accounts_sample: Record<string, number>;
   rr_count: number;
   rr_sample: any[];
   br_count: number;
