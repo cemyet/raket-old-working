@@ -246,7 +246,8 @@ class DatabaseParser:
                     'style': mapping['style'],
                     'variable_name': mapping['variable_name'],
                     'is_calculated': mapping['is_calculated'],
-                    'calculation_formula': mapping['calculation_formula']
+                    'calculation_formula': mapping['calculation_formula'],
+                    'show_amount': mapping['show_amount']
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -274,7 +275,8 @@ class DatabaseParser:
                     'style': mapping['style'],
                     'variable_name': mapping['variable_name'],
                     'is_calculated': mapping['is_calculated'],
-                    'calculation_formula': mapping['calculation_formula']
+                    'calculation_formula': mapping['calculation_formula'],
+                    'show_amount': mapping['show_amount']
                 })
         
         # Second pass: Calculate formulas using all available data
@@ -299,6 +301,9 @@ class DatabaseParser:
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'RR')
+        
+        # Sort results by ID to ensure correct order
+        results.sort(key=lambda x: int(x['id']))
         
         return results
     
@@ -347,7 +352,8 @@ class DatabaseParser:
                     'style': mapping['style'],
                     'variable_name': mapping['variable_name'],
                     'is_calculated': mapping['is_calculated'],
-                    'calculation_formula': mapping['calculation_formula']
+                    'calculation_formula': mapping['calculation_formula'],
+                    'show_amount': mapping['show_amount']
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -372,7 +378,8 @@ class DatabaseParser:
                     'style': mapping['style'],
                     'variable_name': mapping['variable_name'],
                     'is_calculated': mapping['is_calculated'],
-                    'calculation_formula': mapping['calculation_formula']
+                    'calculation_formula': mapping['calculation_formula'],
+                    'show_amount': mapping['show_amount']
                 })
         
         # Second pass: Calculate formulas using all available data
@@ -395,6 +402,9 @@ class DatabaseParser:
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'BR')
+        
+        # Sort results by ID to ensure correct order
+        results.sort(key=lambda x: int(x['id']))
         
         return results
     
@@ -432,60 +442,16 @@ class DatabaseParser:
     
     def ensure_financial_data_columns(self, rr_data: List[Dict[str, Any]], br_data: List[Dict[str, Any]]) -> None:
         """Ensure that the financial_data table has columns for all variables"""
-        try:
-            # Get all variable names from RR and BR data
-            all_variables = set()
-            
-            for item in rr_data:
-                if item.get('variable_name'):
-                    all_variables.add(item['variable_name'])
-            
-            for item in br_data:
-                if item.get('variable_name'):
-                    all_variables.add(item['variable_name'])
-            
-            # Check which columns already exist in the financial_data table
-            try:
-                # Get table information to see existing columns
-                result = supabase.rpc('exec_sql', {
-                    'sql': """
-                    SELECT column_name 
-                    FROM information_schema.columns 
-                    WHERE table_name = 'financial_data' 
-                    AND table_schema = 'public'
-                    """
-                }).execute()
-                
-                existing_columns = {row['column_name'] for row in result.data}
-                
-                # Add missing columns
-                for variable in all_variables:
-                    if variable not in existing_columns:
-                        print(f"Adding column {variable} to financial_data table")
-                        supabase.rpc('exec_sql', {
-                            'sql': f"ALTER TABLE financial_data ADD COLUMN IF NOT EXISTS \"{variable}\" NUMERIC"
-                        }).execute()
-                        
-            except Exception as e:
-                print(f"Error checking/adding columns: {e}")
-                # Fallback: try to add all columns
-                for variable in all_variables:
-                    try:
-                        supabase.rpc('exec_sql', {
-                            'sql': f"ALTER TABLE financial_data ADD COLUMN IF NOT EXISTS \"{variable}\" NUMERIC"
-                        }).execute()
-                    except Exception as col_error:
-                        print(f"Error adding column {variable}: {col_error}")
-                        
-        except Exception as e:
-            print(f"Error ensuring financial data columns: {e}")
+        # Temporarily disabled - exec_sql function doesn't exist in database
+        # TODO: Implement proper dynamic column creation when database supports it
+        pass
 
     def store_financial_data(self, company_id: str, fiscal_year: int, 
                            rr_data: List[Dict[str, Any]], br_data: List[Dict[str, Any]]) -> Dict[str, str]:
         """Store parsed financial data in the database"""
         try:
-            # First, ensure all necessary columns exist
-            self.ensure_financial_data_columns(rr_data, br_data)
+            # Temporarily disabled dynamic column creation
+            # self.ensure_financial_data_columns(rr_data, br_data)
             
             # Store RR data
             rr_values = {}

@@ -137,6 +137,21 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   console.log('AnnualReportPreview - sample RR data:', rrData.slice(0, 3));
   console.log('AnnualReportPreview - sample BR data:', brData.slice(0, 3));
   
+  // Debug: Check for row 382 specifically
+  const row382 = brData.find(item => item.id === '382');
+  console.log('🔍 AnnualReportPreview - Row 382 found:', row382);
+  
+  // Debug: Log all rows around 380-385
+  const rowsAround382 = brData.filter(item => {
+    const id = parseInt(item.id);
+    return id >= 375 && id <= 385;
+  });
+  console.log('🔍 AnnualReportPreview - Rows around 380-385:', rowsAround382);
+  
+  // Force debug - check if component is re-rendering
+  console.log('🔍 AnnualReportPreview - Component re-rendered at:', new Date().toISOString());
+  console.log('🔍 AnnualReportPreview - brData IDs:', brData.map(item => item.id).slice(-10)); // Last 10 IDs
+  
   // No fallback needed - database-driven parser provides all data
 
   const getPreviewContent = () => {
