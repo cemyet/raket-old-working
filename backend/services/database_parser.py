@@ -173,7 +173,9 @@ class DatabaseParser:
         if not formula:
             return 0.0
         
-        print(f"DEBUG: Calculating formula: {formula} (previous_year: {use_previous_year})")
+        # Only log formula calculation for eget kapital or if it's a complex formula
+        if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
+            print(f"DEBUG: Calculating formula: {formula} (previous_year: {use_previous_year})")
         
         # Parse formula like "NETTOOMSATTNING + OVRIGA_INTEKNINGAR"
         # Use variable names instead of row references
@@ -186,26 +188,32 @@ class DatabaseParser:
         
         def replace_variable(match):
             var_name = match.group(1)
-            print(f"DEBUG: Looking for variable: {var_name}")
             # Find the variable in existing results
             for result in existing_results:
                 if result.get('variable_name') == var_name:
                     # Use previous_amount for previous year calculations
                     value = result.get('previous_amount' if use_previous_year else 'current_amount', 0) or 0
-                    print(f"DEBUG: Found variable {var_name} = {value}")
+                    # Only log for eget kapital or if value is non-zero
+                    if "eget kapital" in str(mapping.get('row_title', '')).lower() or value != 0:
+                        print(f"DEBUG: Found variable {var_name} = {value}")
                     return str(value)
-            print(f"DEBUG: Variable {var_name} not found, using 0")
+            # Only log missing variables for eget kapital
+            if "eget kapital" in str(mapping.get('row_title', '')).lower():
+                print(f"DEBUG: Variable {var_name} not found, using 0")
             return '0'  # Default if not found
         
         # Replace all variable references
         formula_with_values = re.sub(pattern, replace_variable, formula)
         
-        print(f"DEBUG: Formula with values: {formula_with_values}")
+        # Only log formula evaluation for eget kapital or if it's a complex formula
+        if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
+            print(f"DEBUG: Formula with values: {formula_with_values}")
         
         try:
             # Evaluate the formula
             result = eval(formula_with_values)
-            print(f"DEBUG: Formula result: {result}")
+            if "eget kapital" in str(mapping.get('row_title', '')).lower() or len(formula.split('+')) > 3:
+                print(f"DEBUG: Formula result: {result}")
             return float(result)
         except Exception as e:
             print(f"DEBUG: Formula evaluation error: {e}")
@@ -274,6 +282,12 @@ class DatabaseParser:
         
         for i, mapping in enumerate(self.rr_mappings):
             if mapping.get('show_amount') and mapping.get('is_calculated'):
+                # Special debugging for "Summa eget kapital"
+                if "eget kapital" in mapping['row_title'].lower():
+                    print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL ===")
+                    print(f"DEBUG: Formula: {mapping.get('calculation_formula')}")
+                    print(f"DEBUG: Variable name: {mapping.get('variable_name')}")
+                
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
                 previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
                 
@@ -364,6 +378,12 @@ class DatabaseParser:
         # Second pass: Calculate formulas using all available data
         for i, mapping in enumerate(self.br_mappings):
             if mapping.get('show_amount') and mapping.get('is_calculated'):
+                # Special debugging for "Summa eget kapital"
+                if "eget kapital" in mapping['row_title'].lower():
+                    print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL (BR) ===")
+                    print(f"DEBUG: Formula: {mapping.get('calculation_formula')}")
+                    print(f"DEBUG: Variable name: {mapping.get('variable_name')}")
+                
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
                 previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
                 
