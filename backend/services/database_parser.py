@@ -516,3 +516,19 @@ class DatabaseParser:
         
         print(f"Extracted company info: {company_info}")
         return company_info
+    
+    def update_calculation_formula(self, row_id: int, formula: str) -> bool:
+        """Update calculation formula for a specific row in the database"""
+        try:
+            # Update the formula in variable_mapping_br table
+            response = supabase.table('variable_mapping_br').update({
+                'calculation_formula': formula,
+                'is_calculated': True
+            }).eq('id', row_id).execute()
+            
+            print(f"Successfully updated formula for row {row_id}: {formula}")
+            return True
+            
+        except Exception as e:
+            print(f"Error updating formula for row {row_id}: {e}")
+            return False

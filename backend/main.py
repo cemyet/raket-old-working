@@ -179,6 +179,23 @@ async def get_company_info(org_number: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fel vid hämtning av företagsinfo: {str(e)}")
 
+@app.post("/update-formula/{row_id}")
+async def update_formula(row_id: int, formula: str):
+    """
+    Updates calculation formula for a specific row in the database
+    """
+    try:
+        parser = DatabaseParser()
+        success = parser.update_calculation_formula(row_id, formula)
+        
+        if success:
+            return {"success": True, "message": f"Formula updated for row {row_id}"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to update formula")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating formula: {str(e)}")
+
 @app.post("/test-parser", response_model=dict)
 async def test_parser(file: UploadFile = File(...)):
     """
