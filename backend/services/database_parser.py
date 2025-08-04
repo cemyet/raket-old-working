@@ -188,19 +188,12 @@ class DatabaseParser:
         
         def replace_variable(match):
             var_name = match.group(1)
-            # Find the variable in existing results
-            for result in existing_results:
-                if result.get('variable_name') == var_name:
-                    # Use previous_amount for previous year calculations
-                    value = result.get('previous_amount' if use_previous_year else 'current_amount', 0) or 0
-                    # Only log for eget kapital or if value is non-zero
-                    if "eget kapital" in str(mapping.get('row_title', '')).lower() or value != 0:
-                        print(f"DEBUG: Found variable {var_name} = {value}")
-                    return str(value)
-            # Only log missing variables for eget kapital
-            if "eget kapital" in str(mapping.get('row_title', '')).lower():
-                print(f"DEBUG: Variable {var_name} not found, using 0")
-            return '0'  # Default if not found
+            # Use the new helper method to get calculated values
+            value = self._get_calculated_value(var_name, existing_results, use_previous_year)
+            # Only log for eget kapital or if value is non-zero
+            if "eget kapital" in str(mapping.get('row_title', '')).lower() or value != 0:
+                print(f"DEBUG: Found variable {var_name} = {value}")
+            return str(value)
         
         # Replace all variable references
         formula_with_values = re.sub(pattern, replace_variable, formula)
@@ -313,8 +306,12 @@ class DatabaseParser:
             # Create a dictionary of variable_name -> current_amount for calculated items
             calculated_values = {}
             for item in results:
-                if item.get('is_calculated') and item.get('variable_name') and item.get('current_amount') is not None:
-                    calculated_values[item['variable_name']] = item['current_amount']
+                if item.get('is_calculated') and item.get('variable_name'):
+                    # Include all calculated items, even if current_amount is 0 or -0
+                    current_amount = item.get('current_amount')
+                    if current_amount is not None:  # This includes 0, -0, and other values
+                        calculated_values[item['variable_name']] = current_amount
+                        print(f"DEBUG: Storing calculated value: {item['variable_name']} = {current_amount}")
             
             if calculated_values:
                 print(f"DEBUG: Storing {len(calculated_values)} calculated values for {report_type}: {calculated_values}")
@@ -325,9 +322,19 @@ class DatabaseParser:
                     # You might want to store this in a separate table or update existing records
                     # For now, we'll just log it and use it in memory
                     pass
+            else:
+                print(f"DEBUG: No calculated values to store for {report_type}")
                     
         except Exception as e:
             print(f"Error storing calculated values: {e}")
+    
+    def _get_calculated_value(self, variable_name: str, results: List[Dict[str, Any]], use_previous_year: bool = False) -> float:
+        """Get calculated value for a variable from results"""
+        for item in results:
+            if item.get('variable_name') == variable_name:
+                value = item.get('previous_amount' if use_previous_year else 'current_amount', 0)
+                return value if value is not None else 0
+        return 0
     
     def parse_br_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
         """Parse BR (Balansräkning) data using database mappings"""
@@ -399,6 +406,10 @@ class DatabaseParser:
                 # Update the result
                 results[i]['current_amount'] = current_amount
                 results[i]['previous_amount'] = previous_amount
+                
+                # Debug: Check if this is row 382
+                if mapping['row_id'] == '382':
+                    print(f"DEBUG: Updated row 382 - current_amount: {current_amount}, variable_name: {mapping.get('variable_name')}")
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'BR')
