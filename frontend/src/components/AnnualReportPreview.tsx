@@ -138,7 +138,8 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   // No fallback needed - database-driven parser provides all data
 
   const getPreviewContent = () => {
-    if (currentStep === 0) {
+    // Show preview if we have data, regardless of currentStep
+    if (currentStep === 0 && !rrData.length && !brData.length) {
       return (
         <div className="text-center py-20">
           <div className="text-muted-foreground mb-4">

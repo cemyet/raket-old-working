@@ -61,15 +61,33 @@ async def upload_se_file(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, temp_file)
             temp_path = temp_file.name
         
-        # Extrahera data från .SE-filen
-        company_data = report_generator.extract_company_data(temp_path)
+        # Read SE file content
+        with open(temp_path, 'r', encoding='utf-8') as f:
+            se_content = f.read()
+        
+        # Use the new database-driven parser
+        parser = DatabaseParser()
+        current_accounts, previous_accounts = parser.parse_account_balances(se_content)
+        company_info = parser.extract_company_info(se_content)
+        rr_data = parser.parse_rr_data(current_accounts, previous_accounts)
+        br_data = parser.parse_br_data(current_accounts, previous_accounts)
         
         # Rensa upp temporär fil
         os.unlink(temp_path)
         
         return {
             "success": True,
-            "company_data": company_data,
+            "data": {
+                "company_info": company_info,
+                "current_accounts_count": len(current_accounts),
+                "previous_accounts_count": len(previous_accounts),
+                "current_accounts_sample": dict(list(current_accounts.items())[:10]),
+                "previous_accounts_sample": dict(list(previous_accounts.items())[:10]),
+                "rr_data": rr_data,
+                "br_data": br_data,
+                "rr_count": len(rr_data),
+                "br_count": len(br_data)
+            },
             "message": "SE-fil laddad framgångsrikt"
         }
         

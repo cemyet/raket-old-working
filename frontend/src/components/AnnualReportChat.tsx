@@ -246,33 +246,26 @@ export function AnnualReportChat() {
   const handleFileProcessed = (data: any) => {
     console.log('File processed data:', data);
     
-    // Check if we have structured annual report data from Python
-    const annualReportData = data.data?.annualReport;
+    // Handle new database-driven parser format
     let extractedResults = null;
     
-    if (annualReportData?.financial_results) {
-      // Use the net result from Python-generated structured data
-      extractedResults = Math.round(annualReportData.financial_results.net_result).toString();
-    } else {
-      // Fallback to legacy extraction
-      let extractedRevenue = '';
-      
-      if (data.data.accountBalances) {
-        const resultAccounts = ['8999', '8910'];
-        for (const account of resultAccounts) {
-          if (data.data.accountBalances[account]) {
-            extractedResults = Math.abs(data.data.accountBalances[account]).toString();
-            break;
-          }
-        }
+    // Try to extract net result from RR data
+    if (data.data?.rr_data) {
+      const netResultItem = data.data.rr_data.find((item: any) => 
+        item.id === 'ÅR' || item.label?.toLowerCase().includes('årets resultat')
+      );
+      if (netResultItem && netResultItem.current_amount !== null) {
+        extractedResults = Math.abs(netResultItem.current_amount).toString();
       }
-      
-      if (data.data.incomeStatement && data.data.incomeStatement.length > 0 && !extractedResults) {
-        const netResultItem = data.data.incomeStatement.find((item: any) => 
-          item.description && item.description.toLowerCase().includes('resultat')
-        );
-        if (netResultItem) {
-          extractedResults = Math.abs(netResultItem.amount).toString();
+    }
+    
+    // Fallback to legacy extraction if needed
+    if (!extractedResults && data.data?.accountBalances) {
+      const resultAccounts = ['8999', '8910'];
+      for (const account of resultAccounts) {
+        if (data.data.accountBalances[account]) {
+          extractedResults = Math.abs(data.data.accountBalances[account]).toString();
+          break;
         }
       }
     }
@@ -280,32 +273,23 @@ export function AnnualReportChat() {
     // Store the complete structured data
     setCompanyData(prev => ({ 
       ...prev, 
-      seFileData: {
-        ...data.data,
-        annualReport: annualReportData
-      },
+      seFileData: data.data,
       results: extractedResults || prev.results,
-      organizationNumber: annualReportData?.header?.organization_number || data.data?.organization_number || prev.organizationNumber,
-      fiscalYear: annualReportData?.header?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
-      location: annualReportData?.header?.location || prev.location,
-      date: annualReportData?.header?.date || data.data?.end_date || prev.date
+      organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
+      fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
+      location: data.data?.company_info?.location || prev.location,
+      date: data.data?.company_info?.date || data.data?.end_date || prev.date
     }));
 
     setTimeout(() => {
       addMessage("Perfekt! 🎉 Komplett årsredovisning skapad från SE-filen.", true, "✅");
       setTimeout(() => {
-        if (extractedResults && annualReportData) {
+        if (extractedResults) {
           addMessage(`Årets resultat: ${extractedResults} kr. Se fullständig rapport till höger!`, true, "💰");
           setTimeout(() => {
             addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
             setCurrentStep(0.5);
           }, 1500);
-        } else if (extractedResults) {
-          addMessage(`Årets resultat: ${extractedResults} kr från bokföringen.`, true, "💰");
-          setTimeout(() => {
-            addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-            setCurrentStep(0.5);
-          }, 1000);
         } else {
           addMessage("Jag kunde inte hitta årets resultat automatiskt i filen. Låt mig fråga dig om det.", true, "🤖");
           setTimeout(() => {
