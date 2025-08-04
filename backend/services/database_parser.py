@@ -163,7 +163,47 @@ class DatabaseParser:
                     if account_spec in accounts:
                         total -= accounts[account_str]
         
-        return total
+        # Reverse the sign for Swedish accounting conventions
+        # Most accounts need to be reversed for proper display
+        return -total
+    
+    def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]]) -> float:
+        """Calculate value using a formula that references other rows"""
+        formula = mapping.get('calculation_formula', '')
+        if not formula:
+            return 0.0
+        
+        print(f"DEBUG: Calculating formula: {formula}")
+        
+        # Parse formula like "RR_001 + RR_002 - RR_003"
+        # Split by operators and evaluate
+        import re
+        
+        # Replace row references with their values
+        # Formula format: RR_001, BR_001, etc.
+        pattern = r'([RB]R_\d+)'
+        
+        def replace_reference(match):
+            ref = match.group(1)
+            # Find the referenced row in existing results
+            for result in existing_results:
+                if result.get('variable_name') == ref:
+                    return str(result.get('current_amount', 0) or 0)
+            return '0'  # Default if not found
+        
+        # Replace all references
+        formula_with_values = re.sub(pattern, replace_reference, formula)
+        
+        print(f"DEBUG: Formula with values: {formula_with_values}")
+        
+        try:
+            # Evaluate the formula
+            result = eval(formula_with_values)
+            print(f"DEBUG: Formula result: {result}")
+            return float(result)
+        except Exception as e:
+            print(f"DEBUG: Formula evaluation error: {e}")
+            return 0.0
     
     def parse_rr_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
         """Parse RR (Resultaträkning) data using database mappings"""
@@ -195,11 +235,18 @@ class DatabaseParser:
                 })
             else:
                 # Data row - calculate amounts for both years
-                current_amount = self.calculate_variable_value(mapping, current_accounts)
-                previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
+                if mapping.get('is_calculated'):
+                    # Use calculation formula for calculated items
+                    current_amount = self.calculate_formula_value(mapping, current_accounts, results)
+                    previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                else:
+                    # Direct account calculation
+                    current_amount = self.calculate_variable_value(mapping, current_accounts)
+                    previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
                 
                 print(f"DEBUG: Data row - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
                 print(f"DEBUG: Mapping accounts: {mapping.get('accounts_included_start')}-{mapping.get('accounts_included_end')}")
+                print(f"DEBUG: Is calculated: {mapping.get('is_calculated')}, Formula: {mapping.get('calculation_formula')}")
                 
                 results.append({
                     'id': mapping['row_id'],
@@ -243,8 +290,14 @@ class DatabaseParser:
                 })
             else:
                 # Data row - calculate amounts for both years
-                current_amount = self.calculate_variable_value(mapping, current_accounts)
-                previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
+                if mapping.get('is_calculated'):
+                    # Use calculation formula for calculated items
+                    current_amount = self.calculate_formula_value(mapping, current_accounts, results)
+                    previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                else:
+                    # Direct account calculation
+                    current_amount = self.calculate_variable_value(mapping, current_accounts)
+                    previous_amount = self.calculate_variable_value(mapping, previous_accounts or {})
                 
                 results.append({
                     'id': mapping['row_id'],
