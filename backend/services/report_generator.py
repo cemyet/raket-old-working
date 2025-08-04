@@ -99,12 +99,12 @@ class ReportGenerator:
             print("🔄 Using new database-driven parser...")
             
             # Parse account balances using new parser
-            accounts = self.database_parser.parse_account_balances(se_content)
-            print(f"📊 Parsed {len(accounts)} accounts")
+            current_accounts, previous_accounts = self.database_parser.parse_account_balances(se_content)
+            print(f"📊 Parsed {len(current_accounts)} current year accounts, {len(previous_accounts)} previous year accounts")
             
             # Parse RR and BR data using new parser
-            rr_data = self.database_parser.parse_rr_data(accounts)
-            br_data = self.database_parser.parse_br_data(accounts)
+            rr_data = self.database_parser.parse_rr_data(current_accounts, previous_accounts)
+            br_data = self.database_parser.parse_br_data(current_accounts, previous_accounts)
             
             print(f"📈 Parsed {len(rr_data)} RR items and {len(br_data)} BR items")
             
@@ -123,9 +123,9 @@ class ReportGenerator:
             # Convert new parser data to old format for PDF generation
             # This is a temporary bridge until PDF generation is updated
             df_rr = self._convert_rr_data_to_old_format(rr_data)
-            df_rr_prev = self._convert_rr_data_to_old_format([])  # TODO: Add previous year support
+            df_rr_prev = self._convert_rr_data_to_old_format([])  # TODO: Extract previous year RR data
             df_br = self._convert_br_data_to_old_format(br_data)
-            df_br_prev = self._convert_br_data_to_old_format([])  # TODO: Add previous year support
+            df_br_prev = self._convert_br_data_to_old_format([])  # TODO: Extract previous year BR data
             
             # Extrahera räkenskapsår för PDF-generering
             current_year, previous_year, current_end_date_raw, previous_end_date_raw, current_year_string, previous_year_string, current_end_date_iso, previous_end_date_iso = extract_fiscal_year_robust(temp_se_path)
@@ -173,7 +173,7 @@ class ReportGenerator:
                 "generated_at": datetime.now().isoformat(),
                 "company_name": request.company_data.company_name,
                 "fiscal_year": request.company_data.fiscal_year,
-                "parsed_accounts": len(accounts),
+                "parsed_accounts": len(current_accounts),
                 "rr_items": len(rr_data),
                 "br_items": len(br_data)
             }
@@ -195,7 +195,7 @@ class ReportGenerator:
         for item in rr_data:
             df_data.append({
                 'Radrubrik': item['label'],
-                'Belopp': item['amount'] if item['amount'] is not None else 0.0,
+                'Belopp': item['current_amount'] if item['current_amount'] is not None else 0.0,
                 'Level': item['level'],
                 'Style': item['style'],
                 'Bold': item['bold']
@@ -217,7 +217,7 @@ class ReportGenerator:
         for item in br_data:
             df_data.append({
                 'Radrubrik': item['label'],
-                'Belopp': item['amount'] if item['amount'] is not None else 0.0,
+                'Belopp': item['current_amount'] if item['current_amount'] is not None else 0.0,
                 'Level': item['level'],
                 'Style': item['style'],
                 'Bold': item['bold'],

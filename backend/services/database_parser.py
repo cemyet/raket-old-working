@@ -294,8 +294,8 @@ class DatabaseParser:
             # Store RR data
             rr_values = {}
             for item in rr_data:
-                if item['amount'] is not None and item['variable_name']:
-                    rr_values[item['variable_name']] = item['amount']
+                if item['current_amount'] is not None and item['variable_name']:
+                    rr_values[item['variable_name']] = item['current_amount']
             
             if rr_values:
                 supabase.table('financial_data').upsert({
@@ -308,8 +308,8 @@ class DatabaseParser:
             # Store BR data
             br_values = {}
             for item in br_data:
-                if item['amount'] is not None and item['variable_name']:
-                    br_values[item['variable_name']] = item['amount']
+                if item['current_amount'] is not None and item['variable_name']:
+                    br_values[item['variable_name']] = item['current_amount']
             
             if br_values:
                 supabase.table('financial_data').upsert({

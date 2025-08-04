@@ -76,7 +76,7 @@ export function AIReportGenerator() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Resultatposter</p>
-                        <p className="font-medium">{processedData.incomeStatement?.length || 0} st</p>
+                        <p className="font-medium">{processedData.rr_data?.length || processedData.incomeStatement?.length || 0} st</p>
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground">
