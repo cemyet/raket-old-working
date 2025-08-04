@@ -39,10 +39,6 @@ export function AnnualReportChat() {
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
-  // Debug logging
-  console.log('AnnualReportChat render - currentStep:', currentStep, 'showFileUpload:', showFileUpload);
-  console.log('🔍 AnnualReportPreview will render:', currentStep >= 0 || companyData.seFileData);
-  
   const [messages, setMessages] = useState([
     {
       text: "Hej! 👋 Välkommen till RaketRapport! Jag hjälper dig att skapa din årsredovisning på bara 5 minuter.",
@@ -69,6 +65,10 @@ export function AnnualReportChat() {
       { name: "Anna Andersson", personalNumber: "851201-1234" }
     ]
   });
+
+  // Debug logging - after all state declarations
+  console.log('AnnualReportChat render - currentStep:', currentStep, 'showFileUpload:', showFileUpload);
+  console.log('🔍 AnnualReportPreview will render:', currentStep >= 0 || companyData.seFileData);
 
   const addMessage = (text: string, isBot = true, emoji?: string) => {
     setMessages(prev => [...prev, { text, isBot, emoji }]);
