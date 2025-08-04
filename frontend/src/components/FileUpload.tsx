@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileText, Loader2 } from 'lucide-react';
+import { Upload, FileText, Loader2, TestTube } from 'lucide-react';
+import { apiService } from '@/services/api';
 
 interface FileUploadProps {
   onFileProcessed: (data: any) => void;
+  onTestParser?: (file: File) => void;
 }
 
-export function FileUpload({ onFileProcessed }: FileUploadProps) {
+export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
   console.log('FileUpload component rendered');
@@ -26,27 +28,19 @@ export function FileUpload({ onFileProcessed }: FileUploadProps) {
     }
 
     setIsUploading(true);
+    setSelectedFile(file);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const result = await apiService.uploadSeFile(file);
 
-      const { data, error } = await supabase.functions.invoke('process-se-file', {
-        body: formData,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.success) {
+      if (result.success) {
         toast({
           title: "Fil bearbetad",
           description: "SE-filen har analyserats och data extraherats"
         });
-        onFileProcessed(data);
+        onFileProcessed(result);
       } else {
-        throw new Error(data.error || 'Okänt fel');
+        throw new Error(result.message || 'Okänt fel');
       }
 
     } catch (error) {
@@ -58,6 +52,21 @@ export function FileUpload({ onFileProcessed }: FileUploadProps) {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleTestParser = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "Ingen fil vald",
+        description: "Ladda upp en .SE fil först",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (onTestParser) {
+      onTestParser(selectedFile);
     }
   };
 
@@ -89,71 +98,89 @@ export function FileUpload({ onFileProcessed }: FileUploadProps) {
   };
 
   return (
-    <div
-      className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-        isDragOver
-          ? 'border-primary bg-primary/5'
-          : 'border-border hover:border-primary/50'
-      }`}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-    >
-      <div className="space-y-3">
-        <div className="mx-auto w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
-          {isUploading ? (
-            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-          ) : (
-            <FileText className="w-4 h-4 text-muted-foreground" />
-          )}
-        </div>
-        
-        <div className="space-y-1">
-          <h3 className="text-sm font-medium">Ladda upp .SE fil</h3>
-          <p className="text-xs text-muted-foreground">
-            Dra och släpp din .SE fil här eller klicka nedan
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <input
-            type="file"
-            accept=".se,.SE"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-upload"
-            disabled={isUploading}
-          />
+    <div className="space-y-4">
+      <div
+        className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+          isDragOver
+            ? 'border-primary bg-primary/5'
+            : 'border-border hover:border-primary/50'
+        }`}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+      >
+        <div className="space-y-3">
+          <div className="mx-auto w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+            {isUploading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            ) : (
+              <FileText className="w-4 h-4 text-muted-foreground" />
+            )}
+          </div>
           
-          <label htmlFor="file-upload">
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer"
-              disabled={isUploading}
-              asChild
-            >
-              <span>
-                {isUploading ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                    Bearbetar...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-3 h-3 mr-2" />
-                    Välj .SE fil
-                  </>
-                )}
-              </span>
-            </Button>
-          </label>
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium">Ladda upp .SE fil</h3>
+            <p className="text-xs text-muted-foreground">
+              Dra och släpp din .SE fil här eller klicka nedan
+            </p>
+          </div>
 
-          <p className="text-xs text-muted-foreground">
-            .SE filer från bokföringsprogram
-          </p>
+          <div className="space-y-2">
+            <input
+              type="file"
+              accept=".se,.SE"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-upload"
+              disabled={isUploading}
+            />
+            
+            <label htmlFor="file-upload">
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                disabled={isUploading}
+                asChild
+              >
+                <span>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                      Bearbetar...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3 h-3 mr-2" />
+                      Välj .SE fil
+                    </>
+                  )}
+                </span>
+              </Button>
+            </label>
+
+            <p className="text-xs text-muted-foreground">
+              .SE filer från bokföringsprogram
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* Test Parser Button */}
+      {selectedFile && (
+        <div className="flex justify-center">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleTestParser}
+            disabled={isUploading}
+            className="gap-2"
+          >
+            <TestTube className="w-3 h-3" />
+            Testa Ny Parser
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

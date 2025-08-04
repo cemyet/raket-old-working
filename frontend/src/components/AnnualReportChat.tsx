@@ -10,7 +10,8 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { AnnualReportPreview } from "./AnnualReportPreview";
 import { FileUpload } from "./FileUpload";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, TestTube } from "lucide-react";
+import { apiService } from "@/services/api";
 
 interface CompanyData {
   result: number | null;
@@ -174,6 +175,29 @@ export function AnnualReportChat() {
     addMessage("Generera PDF", false);
     addMessage("Perfekt! Din årsredovisning genereras nu... 📄⚡", true, "⚡");
     // Här skulle vi skicka till backend för PDF-generering
+  };
+
+  const testParser = async (file: File) => {
+    try {
+      addMessage("🧪 Testar ny databas-driven parser...", true, "🔬");
+      
+      const result = await apiService.testParser(file);
+      
+      addMessage(`✅ Parser test lyckades!`, true, "✅");
+      addMessage(`📊 Hittade ${result.accounts_count} konton`, true, "📊");
+      addMessage(`📈 ${result.rr_count} RR-poster, ${result.br_count} BR-poster`, true, "📈");
+      
+      console.log('Parser test result:', result);
+      
+    } catch (error) {
+      console.error('Parser test failed:', error);
+      addMessage(`❌ Parser test misslyckades: ${error instanceof Error ? error.message : 'Okänt fel'}`, true, "❌");
+      toast({
+        title: "Parser Test Failed",
+        description: error instanceof Error ? error.message : 'Unknown error',
+        variant: "destructive",
+      });
+    }
   };
 
   const handleFileProcessed = (data: any) => {
@@ -355,7 +379,10 @@ export function AnnualReportChat() {
               {/* File Upload - Always show first */}
               {currentStep === -1 && (
                 <div className="space-y-3">
-                  <FileUpload onFileProcessed={handleFileProcessed} />
+                  <FileUpload 
+                    onFileProcessed={handleFileProcessed} 
+                    onTestParser={testParser}
+                  />
                 </div>
               )}
 
