@@ -168,31 +168,31 @@ class DatabaseParser:
         return -total
     
     def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]]) -> float:
-        """Calculate value using a formula that references other rows"""
+        """Calculate value using a formula that references variable names"""
         formula = mapping.get('calculation_formula', '')
         if not formula:
             return 0.0
         
         print(f"DEBUG: Calculating formula: {formula}")
         
-        # Parse formula like "RR_001 + RR_002 - RR_003"
-        # Split by operators and evaluate
+        # Parse formula like "NETTOOMSATTNING + OVRIGA_INTEKNINGAR"
+        # Use variable names instead of row references
         import re
         
-        # Replace row references with their values
-        # Formula format: RR_001, BR_001, etc.
-        pattern = r'([RB]R_\d+)'
+        # Replace variable references with their calculated values
+        # Formula format: variable names like NETTOOMSATTNING, OVRIGA_INTEKNINGAR, etc.
+        pattern = r'([A-Z_]+)'
         
-        def replace_reference(match):
-            ref = match.group(1)
-            # Find the referenced row in existing results
+        def replace_variable(match):
+            var_name = match.group(1)
+            # Find the variable in existing results
             for result in existing_results:
-                if result.get('variable_name') == ref:
+                if result.get('variable_name') == var_name:
                     return str(result.get('current_amount', 0) or 0)
             return '0'  # Default if not found
         
-        # Replace all references
-        formula_with_values = re.sub(pattern, replace_reference, formula)
+        # Replace all variable references
+        formula_with_values = re.sub(pattern, replace_variable, formula)
         
         print(f"DEBUG: Formula with values: {formula_with_values}")
         
@@ -216,6 +216,7 @@ class DatabaseParser:
         print(f"DEBUG: Current accounts: {len(current_accounts)} accounts")
         print(f"DEBUG: Sample current accounts: {dict(list(current_accounts.items())[:5])}")
         
+        # First pass: Create all rows with direct calculations
         for mapping in self.rr_mappings:
             if not mapping.get('show_amount'):
                 # Header row - no calculation needed
@@ -236,9 +237,9 @@ class DatabaseParser:
             else:
                 # Data row - calculate amounts for both years
                 if mapping.get('is_calculated'):
-                    # Use calculation formula for calculated items
-                    current_amount = self.calculate_formula_value(mapping, current_accounts, results)
-                    previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                    # For calculated items, set to 0 initially, will be updated in second pass
+                    current_amount = 0.0
+                    previous_amount = 0.0
                 else:
                     # Direct account calculation
                     current_amount = self.calculate_variable_value(mapping, current_accounts)
@@ -262,7 +263,44 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula']
                 })
         
+        # Second pass: Calculate formulas using all available data
+        for i, mapping in enumerate(self.rr_mappings):
+            if mapping.get('show_amount') and mapping.get('is_calculated'):
+                current_amount = self.calculate_formula_value(mapping, current_accounts, results)
+                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                
+                print(f"DEBUG: Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
+                
+                # Update the result
+                results[i]['current_amount'] = current_amount
+                results[i]['previous_amount'] = previous_amount
+        
+        # Store calculated values in database for future use
+        self.store_calculated_values(results, 'RR')
+        
         return results
+    
+    def store_calculated_values(self, results: List[Dict[str, Any]], report_type: str):
+        """Store calculated values in database for future retrieval"""
+        try:
+            # Create a dictionary of variable_name -> current_amount for calculated items
+            calculated_values = {}
+            for item in results:
+                if item.get('is_calculated') and item.get('variable_name') and item.get('current_amount') is not None:
+                    calculated_values[item['variable_name']] = item['current_amount']
+            
+            if calculated_values:
+                print(f"DEBUG: Storing {len(calculated_values)} calculated values for {report_type}: {calculated_values}")
+                
+                # Store in a temporary table or update existing records
+                # This will be used when formulas reference these variables
+                for var_name, value in calculated_values.items():
+                    # You might want to store this in a separate table or update existing records
+                    # For now, we'll just log it and use it in memory
+                    pass
+                    
+        except Exception as e:
+            print(f"Error storing calculated values: {e}")
     
     def parse_br_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
         """Parse BR (Balansräkning) data using database mappings"""
@@ -271,6 +309,7 @@ class DatabaseParser:
         
         results = []
         
+        # First pass: Create all rows with direct calculations
         for mapping in self.br_mappings:
             if not mapping.get('show_amount'):
                 # Header row - no calculation needed
@@ -291,9 +330,9 @@ class DatabaseParser:
             else:
                 # Data row - calculate amounts for both years
                 if mapping.get('is_calculated'):
-                    # Use calculation formula for calculated items
-                    current_amount = self.calculate_formula_value(mapping, current_accounts, results)
-                    previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                    # For calculated items, set to 0 initially, will be updated in second pass
+                    current_amount = 0.0
+                    previous_amount = 0.0
                 else:
                     # Direct account calculation
                     current_amount = self.calculate_variable_value(mapping, current_accounts)
@@ -313,6 +352,21 @@ class DatabaseParser:
                     'is_calculated': mapping['is_calculated'],
                     'calculation_formula': mapping['calculation_formula']
                 })
+        
+        # Second pass: Calculate formulas using all available data
+        for i, mapping in enumerate(self.br_mappings):
+            if mapping.get('show_amount') and mapping.get('is_calculated'):
+                current_amount = self.calculate_formula_value(mapping, current_accounts, results)
+                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results)
+                
+                print(f"DEBUG: BR Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
+                
+                # Update the result
+                results[i]['current_amount'] = current_amount
+                results[i]['previous_amount'] = previous_amount
+        
+        # Store calculated values in database for future use
+        self.store_calculated_values(results, 'BR')
         
         return results
     
