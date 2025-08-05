@@ -262,7 +262,8 @@ class DatabaseParser:
                     'is_calculated': mapping['is_calculated'],
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
-                    'block_group': mapping.get('block_group')
+                    'block_group': mapping.get('block_group'),
+                    'always_show': mapping.get('always_show', False)
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -290,7 +291,8 @@ class DatabaseParser:
                     'is_calculated': mapping['is_calculated'],
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
-                    'block_group': mapping.get('block_group')
+                    'block_group': mapping.get('block_group'),
+                    'always_show': mapping.get('always_show', False)
                 })
         
         # Second pass: Calculate formulas using all available data
@@ -386,7 +388,8 @@ class DatabaseParser:
                     'is_calculated': mapping['is_calculated'],
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
-                    'block_group': mapping.get('block_group')
+                    'block_group': mapping.get('block_group'),
+                    'always_show': mapping.get('always_show', False)
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -413,7 +416,8 @@ class DatabaseParser:
                     'is_calculated': mapping['is_calculated'],
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
-                    'block_group': mapping.get('block_group')
+                    'block_group': mapping.get('block_group'),
+                    'always_show': mapping.get('always_show', False)
                 })
         
         # Second pass: Calculate formulas using all available data

@@ -19,6 +19,7 @@ export interface SEData {
     bold?: boolean;
     style?: string;
     block_group?: string;
+    always_show?: boolean;
   }>;
   br_data?: Array<{
     id: string;
@@ -31,6 +32,7 @@ export interface SEData {
     bold?: boolean;
     style?: string;
     block_group?: string;
+    always_show?: boolean;
   }>;
   company_info?: {
     organization_number?: string;

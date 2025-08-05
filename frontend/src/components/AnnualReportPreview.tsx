@@ -131,16 +131,7 @@ interface AnnualReportPreviewProps {
   currentStep: number;
 }
 
-// Always show these rows regardless of zero values
-const ALWAYS_SHOW_RR = [
-  'Nettoomsättning', 'Övriga rörelseintäkter', 'Personalkostnader', 
-  'Övriga rörelsekostnader', 'Förändring av periodiseringsfonder', 
-  'Övriga bokslutsdispositioner', 'Skatt på årets resultat'
-];
-
-const ALWAYS_SHOW_BR = [
-  'Årets resultat', 'Balanserat resultat'
-];
+// Database-driven always_show logic - no more hardcoded arrays
 
 export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPreviewProps) {
   const [showAllRR, setShowAllRR] = useState(false);
@@ -211,7 +202,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   };
 
   // Helper function to check if a block group has any content
-  const blockGroupHasContent = (data: any[], blockGroup: string, alwaysShowItems: string[]): boolean => {
+  const blockGroupHasContent = (data: any[], blockGroup: string): boolean => {
     if (!blockGroup) return true; // Show items without block_group
     
     const blockItems = data.filter(item => item.block_group === blockGroup);
@@ -222,7 +213,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
       
       const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
                               (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
-      const isAlwaysShow = alwaysShowItems.includes(item.label);
+      const isAlwaysShow = item.always_show === true; // Use database field
       
       if (hasNonZeroAmount || isAlwaysShow) {
         return true;
@@ -232,23 +223,30 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   };
 
   // Helper function to check if a row should be shown
-  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean, data: any[]): boolean => {
+  const shouldShowRow = (item: any, showAll: boolean, data: any[]): boolean => {
     if (showAll) return true;
     
+    // Always show calculated items and sums (S1, S2, S3 styles) regardless of block logic
+    const isSum = item.style && ['S1', 'S2', 'S3'].includes(item.style);
+    const isCalculated = item.is_calculated === true;
+    if (isSum || isCalculated) {
+      return true;
+    }
+    
     // Check if this is a heading
-    const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
+    const isHeading = item.style && ['H0', 'H1', 'H2', 'H3'].includes(item.style);
     
     if (isHeading) {
       // For headings, check if their block group has content
       if (item.block_group) {
-        return blockGroupHasContent(data, item.block_group, alwaysShowItems);
+        return blockGroupHasContent(data, item.block_group);
       }
       return true; // Show headings without block_group
     }
     
     const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
                             (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
-    const isAlwaysShow = alwaysShowItems.includes(item.label);
+    const isAlwaysShow = item.always_show === true; // Use database field
     
     return hasNonZeroAmount || isAlwaysShow;
   };
@@ -344,7 +342,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Income Statement Rows */}
             {rrData.length > 0 ? (
               rrData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR, rrData)) {
+                if (!shouldShowRow(item, showAllRR, rrData)) {
                   return null;
                 }
                 
@@ -403,7 +401,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Balance Sheet Rows */}
             {brData.length > 0 ? (
               brData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR, brData)) {
+                if (!shouldShowRow(item, showAllBR, brData)) {
                   return null;
                 }
                 
