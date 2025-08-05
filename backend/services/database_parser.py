@@ -163,9 +163,15 @@ class DatabaseParser:
                     if account_spec in accounts:
                         total -= accounts[account_str]
         
-        # Reverse the sign for Swedish accounting conventions
-        # Most accounts need to be reversed for proper display
-        return -total
+        # Apply sign based on balance type for Swedish accounting conventions
+        balance_type = mapping.get('balance_type', 'DEBIT')
+        
+        # For DEBIT accounts (assets), we typically want positive values
+        # For CREDIT accounts (liabilities/equity), we typically want negative values
+        if balance_type == 'CREDIT':
+            return -total
+        else:
+            return total
     
     def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]], use_previous_year: bool = False) -> float:
         """Calculate value using a formula that references variable names"""
