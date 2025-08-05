@@ -208,13 +208,55 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     return false;
   };
 
+  // Helper function to check if a block has any content
+  const blockHasContent = (data: any[], startIndex: number, endIndex: number, alwaysShowItems: string[]): boolean => {
+    for (let i = startIndex; i <= endIndex && i < data.length; i++) {
+      const item = data[i];
+      const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
+      if (isHeading) continue; // Skip headings when checking block content
+      
+      const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
+                              (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
+      const isAlwaysShow = alwaysShowItems.includes(item.label);
+      
+      if (hasNonZeroAmount || isAlwaysShow) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper function to find the block boundaries for a heading
+  const getBlockBoundaries = (data: any[], headingIndex: number): { start: number; end: number } => {
+    const headingLevel = data[headingIndex].level || 0;
+    let end = headingIndex + 1;
+    
+    // Find the end of this block (next heading at same or higher level, or end of data)
+    while (end < data.length) {
+      const currentItem = data[end];
+      const isHeading = currentItem.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(currentItem.style);
+      
+      if (isHeading && currentItem.level <= headingLevel) {
+        break;
+      }
+      end++;
+    }
+    
+    return { start: headingIndex + 1, end: end - 1 };
+  };
+
   // Helper function to check if a row should be shown
-  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean): boolean => {
+  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean, data: any[], index: number): boolean => {
     if (showAll) return true;
     
-    // Always show headings (H0, H1, H2, H3, S1, S2, S3)
+    // Check if this is a heading
     const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
-    if (isHeading) return true;
+    
+    if (isHeading) {
+      // For headings, check if their block has content
+      const boundaries = getBlockBoundaries(data, index);
+      return blockHasContent(data, boundaries.start, boundaries.end, alwaysShowItems);
+    }
     
     const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
                             (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
@@ -314,7 +356,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Income Statement Rows */}
             {rrData.length > 0 ? (
               rrData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR)) {
+                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR, rrData, index)) {
                   return null;
                 }
                 
@@ -373,7 +415,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Balance Sheet Rows */}
             {brData.length > 0 ? (
               brData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR)) {
+                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR, brData, index)) {
                   return null;
                 }
                 
