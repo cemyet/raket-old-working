@@ -68,6 +68,7 @@ interface CompanyData {
       previous_amount: number | null;
       level: number;
       bold: boolean;
+      style?: string;
     }>;
     br_data?: Array<{
       id: string;
@@ -76,6 +77,7 @@ interface CompanyData {
       previous_amount: number | null;
       level: number;
       bold: boolean;
+      style?: string;
     }>;
          company_info?: {
        organization_number?: string;
@@ -140,6 +142,24 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
 
   
   // No fallback needed - database-driven parser provides all data
+
+  // Helper function to get styling classes based on style
+  const getStyleClasses = (style?: string) => {
+    const baseClasses = 'grid grid-cols-3 gap-4';
+    let additionalClasses = '';
+    
+    // Handle bold styling for header styles only
+    if (style === 'H0' || style === 'H1' || style === 'H2' || style === 'H3' || style === 'S1' || style === 'S2' || style === 'S3') {
+      additionalClasses += ' font-semibold';
+    }
+    
+    // Handle specific styling for S3 (thin grey lines above and below)
+    if (style === 'S3') {
+      additionalClasses += ' border-t border-b border-gray-200 pt-1 pb-1';
+    }
+    
+    return `${baseClasses}${additionalClasses}`;
+  };
 
   const getPreviewContent = () => {
     // Show empty state only if we have no data and are at step 0
@@ -231,9 +251,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 return (
                   <div 
                     key={index} 
-                    className={`grid grid-cols-3 gap-4 ${
-                      item.bold ? 'font-semibold border-t pt-1' : ''
-                    } ${
+                    className={`${getStyleClasses(item.style)} ${
                       item.level === 0 ? 'border-b pb-1' : item.level === 1 ? 'ml-4' : ''
                     }`}
                   >
@@ -274,9 +292,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 return (
                   <div 
                     key={index} 
-                    className={`grid grid-cols-3 gap-4 ${
-                      item.bold ? 'font-semibold border-t pt-1' : ''
-                    } ${
+                    className={`${getStyleClasses(item.style)} ${
                       item.level === 0 ? 'border-b pb-1' : item.level === 1 ? 'ml-4' : ''
                     }`}
                   >
