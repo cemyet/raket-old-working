@@ -234,7 +234,8 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
       if (item.block_group) {
         return blockGroupHasContent(data, item.block_group);
       }
-      return true; // Show headings without block_group
+      // NEW: Even headings without block_group must follow always_show rule
+      return item.always_show === true;
     }
     
     // NEW LOGIC: If amount is 0 for both years, hide unless always_show = true
