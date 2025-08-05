@@ -171,7 +171,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     
     return {
       className: `${baseClasses}${additionalClasses}`,
-      style: { gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr' }
+      style: { gridTemplateColumns: '4fr 0.5fr 1fr 1fr' }
     };
   };
 
@@ -331,7 +331,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr'}}>
+            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '4fr 0.5fr 1fr 1fr'}}>
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
@@ -391,7 +391,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr'}}>
+            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '4fr 0.5fr 1fr 1fr'}}>
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
