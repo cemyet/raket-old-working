@@ -166,9 +166,12 @@ class DatabaseParser:
         # Apply sign based on balance type for Swedish accounting conventions
         balance_type = mapping.get('balance_type', 'DEBIT')
         
-        # For DEBIT accounts (assets), we typically want positive values
-        # For CREDIT accounts (liabilities/equity), we typically want negative values
-        if balance_type == 'CREDIT':
+        # Get account range to determine if we should reverse the sign
+        start = mapping.get('accounts_included_start')
+        
+        # Only reverse CREDIT accounts for 1000-2999 range
+        # For accounts 3000-8999, don't reverse regardless of balance_type
+        if balance_type == 'CREDIT' and start and 1000 <= start <= 2999:
             return -total
         else:
             return total
