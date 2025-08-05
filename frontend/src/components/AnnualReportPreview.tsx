@@ -346,7 +346,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   <div 
                     key={index} 
                     className={`${getStyleClasses(item.style)} ${
-                      item.level === 0 ? 'border-b pb-1' : item.level === 1 ? 'ml-4' : ''
+                      item.level === 0 ? 'border-b pb-1' : ''
                     }`}
                   >
                     <span className="text-muted-foreground">{item.label}</span>
@@ -405,7 +405,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   <div 
                     key={index} 
                     className={`${getStyleClasses(item.style)} ${
-                      item.level === 0 ? 'border-b pb-1' : item.level === 1 ? 'ml-4' : ''
+                      item.level === 0 ? 'border-b pb-1' : ''
                     }`}
                   >
                     <span className="text-muted-foreground">{item.label}</span>
