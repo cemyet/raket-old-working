@@ -28,6 +28,8 @@ interface CompanyData {
   seFileData?: any; // Store processed SE file data
   organizationNumber?: string; // From SE file
   fiscalYear?: number; // From SE file
+  sumAretsResultat?: number; // From SE file RR data
+  sumFrittEgetKapital?: number; // From SE file RR data
 }
 
 const TOTAL_STEPS = 5;
@@ -94,6 +96,22 @@ export function AnnualReportChat() {
         addMessage("Har något särskilt hänt i verksamheten under året?", true, "📋");
       }, 1000);
     }
+    
+    setShowInput(false);
+    setInputValue("");
+  };
+
+  const handleCustomDividendInput = () => {
+    const amount = parseFloat(inputValue);
+    if (isNaN(amount)) return;
+    
+    setCompanyData(prev => ({ ...prev, customDividend: amount }));
+    addMessage(inputValue + " kr", false);
+    
+    setTimeout(() => {
+      setCurrentStep(1);
+      addMessage("Perfekt! Nu går vi vidare. Har något särskilt hänt i verksamheten under året?", true, "📋");
+    }, 1000);
     
     setShowInput(false);
     setInputValue("");
@@ -249,6 +267,8 @@ export function AnnualReportChat() {
     
     // Handle new database-driven parser format
     let extractedResults = null;
+    let sumAretsResultat = null;
+    let sumFrittEgetKapital = null;
     
     // Try to extract net result from RR data
     if (data.data?.rr_data) {
@@ -257,6 +277,24 @@ export function AnnualReportChat() {
       );
       if (netResultItem && netResultItem.current_amount !== null) {
         extractedResults = Math.abs(netResultItem.current_amount).toString();
+      }
+      
+      // Extract SumAretsResultat for chat options
+      const sumAretsResultatItem = data.data.rr_data.find((item: any) => 
+        item.label?.toLowerCase().includes('sumaretsresultat') || 
+        item.variable_name === 'SumAretsResultat'
+      );
+      if (sumAretsResultatItem && sumAretsResultatItem.current_amount !== null) {
+        sumAretsResultat = Math.abs(sumAretsResultatItem.current_amount);
+      }
+      
+      // Extract SumFrittEgetKapital for chat options
+      const sumFrittEgetKapitalItem = data.data.rr_data.find((item: any) => 
+        item.label?.toLowerCase().includes('sumfrittegetkapital') || 
+        item.variable_name === 'SumFrittEgetKapital'
+      );
+      if (sumFrittEgetKapitalItem && sumFrittEgetKapitalItem.current_amount !== null) {
+        sumFrittEgetKapital = Math.abs(sumFrittEgetKapitalItem.current_amount);
       }
     }
     
@@ -276,6 +314,8 @@ export function AnnualReportChat() {
       ...prev, 
       seFileData: data.data,
       results: extractedResults || prev.results,
+      sumAretsResultat: sumAretsResultat,
+      sumFrittEgetKapital: sumFrittEgetKapital,
       organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
       fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
       location: data.data?.company_info?.location || prev.location,
@@ -362,7 +402,7 @@ export function AnnualReportChat() {
             {/* Clean Input Area */}
             <div className="px-6 py-4">
               {/* Text input area with arrow button */}
-              {(showInput && (currentStep < 1 || currentStep === 1)) && (
+              {(showInput && (currentStep < 1 || currentStep === 1 || currentStep === 0.5)) && (
                 <div className="flex items-end gap-3">
                   {currentStep < 1 ? (
                     <Input
@@ -370,6 +410,14 @@ export function AnnualReportChat() {
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       placeholder="Ange belopp i kr..."
+                      className="flex-1 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
+                    />
+                  ) : currentStep === 0.5 ? (
+                    <Input
+                      type="number"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder="Ange utdelningsbelopp i kr..."
                       className="flex-1 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
                     />
                   ) : (
@@ -381,7 +429,7 @@ export function AnnualReportChat() {
                     />
                   )}
                   <Button
-                    onClick={currentStep < 1 ? handleResultInput : handleEventsText}
+                    onClick={currentStep < 1 ? handleResultInput : currentStep === 0.5 ? handleCustomDividendInput : handleEventsText}
                     className="w-7 h-7 rounded-full bg-foreground hover:bg-foreground/90 p-0 flex-shrink-0"
                   >
                     <svg
@@ -428,14 +476,14 @@ export function AnnualReportChat() {
                   <OptionButton onClick={() => handleDividend("0")}>
                     0 kr
                   </OptionButton>
-                  <OptionButton onClick={() => handleDividend("Hela årets vinst")}>
-                    Hela årets vinst
+                  <OptionButton onClick={() => handleDividend(`Hela årets vinst (${companyData.sumAretsResultat ? Math.round(companyData.sumAretsResultat).toLocaleString('sv-SE') : 0} kr)`)}>
+                    Hela årets vinst ({companyData.sumAretsResultat ? Math.round(companyData.sumAretsResultat).toLocaleString('sv-SE') : 0} kr)
                   </OptionButton>
-                  <OptionButton onClick={() => handleDividend("Hela balanserade vinsten")}>
-                    Hela balanserade vinsten
+                  <OptionButton onClick={() => handleDividend(`Allt utdelningsbart kapital (${companyData.sumFrittEgetKapital ? Math.round(companyData.sumFrittEgetKapital).toLocaleString('sv-SE') : 0} kr)`)}>
+                    Allt utdelningsbart kapital ({companyData.sumFrittEgetKapital ? Math.round(companyData.sumFrittEgetKapital).toLocaleString('sv-SE') : 0} kr)
                   </OptionButton>
-                  <OptionButton onClick={() => handleDividend("Annat belopp")}>
-                    Ange annat belopp
+                  <OptionButton onClick={() => setShowInput(true)}>
+                    Annat belopp
                   </OptionButton>
                 </div>
               )}
