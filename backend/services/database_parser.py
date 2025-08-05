@@ -299,7 +299,7 @@ class DatabaseParser:
         print(f"DEBUG: Available variables in results: {[r.get('variable_name') for r in results if r.get('variable_name')]}")
         
         for i, mapping in enumerate(self.rr_mappings):
-            if mapping.get('show_amount') and mapping.get('is_calculated'):
+            if mapping.get('is_calculated'):
                 # Special debugging for "Summa eget kapital"
                 if "eget kapital" in mapping['row_title'].lower():
                     print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL ===")
@@ -311,9 +311,12 @@ class DatabaseParser:
                 
                 print(f"DEBUG: Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
                 
-                # Update the result
-                results[i]['current_amount'] = current_amount
-                results[i]['previous_amount'] = previous_amount
+                # Find and update the correct result by row_id
+                for result in results:
+                    if result['id'] == mapping['row_id']:
+                        result['current_amount'] = current_amount
+                        result['previous_amount'] = previous_amount
+                        break
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'RR')
@@ -423,16 +426,19 @@ class DatabaseParser:
         # Second pass: Calculate formulas using all available data
         # Sort calculated mappings by row_id to ensure dependencies are calculated first
         calculated_mappings = [(i, mapping) for i, mapping in enumerate(self.br_mappings) 
-                              if mapping.get('show_amount') and mapping.get('is_calculated')]
+                              if mapping.get('is_calculated')]
         calculated_mappings.sort(key=lambda x: int(x[1]['row_id']))
         
         for i, mapping in calculated_mappings:
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False, rr_data=rr_data)
                 previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True, rr_data=rr_data)
                 
-                # Update the result
-                results[i]['current_amount'] = current_amount
-                results[i]['previous_amount'] = previous_amount
+                # Find and update the correct result by row_id
+                for result in results:
+                    if result['id'] == mapping['row_id']:
+                        result['current_amount'] = current_amount
+                        result['previous_amount'] = previous_amount
+                        break
         
         # Store calculated values in database for future use
         self.store_calculated_values(results, 'BR')

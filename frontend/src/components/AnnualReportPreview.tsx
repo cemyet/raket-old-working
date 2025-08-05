@@ -226,13 +226,6 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   const shouldShowRow = (item: any, showAll: boolean, data: any[]): boolean => {
     if (showAll) return true;
     
-    // Always show calculated items and sums (S1, S2, S3 styles) regardless of block logic
-    const isSum = item.style && ['S1', 'S2', 'S3'].includes(item.style);
-    const isCalculated = item.is_calculated === true;
-    if (isSum || isCalculated) {
-      return true;
-    }
-    
     // Check if this is a heading
     const isHeading = item.style && ['H0', 'H1', 'H2', 'H3'].includes(item.style);
     
@@ -244,10 +237,12 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
       return true; // Show headings without block_group
     }
     
+    // NEW LOGIC: If amount is 0 for both years, hide unless always_show = true
     const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
                             (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
     const isAlwaysShow = item.always_show === true; // Use database field
     
+    // Show if: (has non-zero amount) OR (always_show = true)
     return hasNonZeroAmount || isAlwaysShow;
   };
 
