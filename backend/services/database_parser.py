@@ -165,15 +165,43 @@ class DatabaseParser:
         
         # Apply sign based on SE file data structure
         # All account balances from 2000-8989 need to be reversed regardless of balance_type
-        start = mapping.get('accounts_included_start')
         
-        # Reverse all accounts in range 2000-8989 due to SE file data structure
-        if start and 2000 <= start <= 8989:
+        # Check if any accounts in the 2000-8989 range are being used
+        should_reverse = False
+        
+        # Check account range
+        start = mapping.get('accounts_included_start')
+        end = mapping.get('accounts_included_end')
+        if start and end and 2000 <= start <= 8989:
+            should_reverse = True
+        
+        # Check additional specific accounts
+        additional_accounts = mapping.get('accounts_included')
+        if additional_accounts:
+            for account_spec in additional_accounts.split(';'):
+                account_spec = account_spec.strip()
+                if '-' in account_spec:
+                    # Range specification
+                    range_start, range_end = map(int, account_spec.split('-'))
+                    if 2000 <= range_start <= 8989:
+                        should_reverse = True
+                        break
+                else:
+                    # Single account
+                    try:
+                        account_id = int(account_spec)
+                        if 2000 <= account_id <= 8989:
+                            should_reverse = True
+                            break
+                    except ValueError:
+                        continue
+        
+        if should_reverse:
             return -total
         else:
             return total
     
-    def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]], use_previous_year: bool = False) -> float:
+    def calculate_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], existing_results: List[Dict[str, Any]], use_previous_year: bool = False, rr_data: List[Dict[str, Any]] = None) -> float:
         """Calculate value using a formula that references variable names"""
         formula = mapping.get('calculation_formula', '')
         if not formula:
@@ -193,7 +221,7 @@ class DatabaseParser:
         def replace_variable(match):
             var_name = match.group(1)
             # Use the new helper method to get calculated values
-            value = self._get_calculated_value(var_name, existing_results, use_previous_year)
+            value = self._get_calculated_value(var_name, existing_results, use_previous_year, rr_data)
 
             return str(value)
         
@@ -314,15 +342,24 @@ class DatabaseParser:
         except Exception as e:
             print(f"Error storing calculated values: {e}")
     
-    def _get_calculated_value(self, variable_name: str, results: List[Dict[str, Any]], use_previous_year: bool = False) -> float:
-        """Get calculated value for a variable from results"""
+    def _get_calculated_value(self, variable_name: str, results: List[Dict[str, Any]], use_previous_year: bool = False, rr_data: List[Dict[str, Any]] = None) -> float:
+        """Get calculated value for a variable from results or RR data"""
+        # First check in the current results (BR data)
         for item in results:
             if item.get('variable_name') == variable_name:
                 value = item.get('previous_amount' if use_previous_year else 'current_amount', 0)
                 return value if value is not None else 0
+        
+        # If not found in current results, check in RR data
+        if rr_data:
+            for item in rr_data:
+                if item.get('variable_name') == variable_name:
+                    value = item.get('previous_amount' if use_previous_year else 'current_amount', 0)
+                    return value if value is not None else 0
+        
         return 0
     
-    def parse_br_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
+    def parse_br_data(self, current_accounts: Dict[str, float], previous_accounts: Dict[str, float] = None, rr_data: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Parse BR (Balansräkning) data using database mappings"""
         if not self.br_mappings:
             return []
@@ -382,8 +419,8 @@ class DatabaseParser:
         calculated_mappings.sort(key=lambda x: int(x[1]['row_id']))
         
         for i, mapping in calculated_mappings:
-                current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
-                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
+                current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False, rr_data=rr_data)
+                previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True, rr_data=rr_data)
                 
                 # Update the result
                 results[i]['current_amount'] = current_amount
