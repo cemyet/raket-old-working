@@ -154,9 +154,9 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   
   // No fallback needed - database-driven parser provides all data
 
-  // Helper function to get styling classes based on style
+  // Helper function to get styling classes and style based on style
   const getStyleClasses = (style?: string) => {
-    const baseClasses = 'grid grid-cols-4 gap-4';
+    const baseClasses = 'grid gap-4';
     let additionalClasses = '';
     
     // Handle bold styling for header styles only
@@ -169,7 +169,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
       additionalClasses += ' border-t border-b border-gray-200 pt-1 pb-1';
     }
     
-    return `${baseClasses}${additionalClasses}`;
+    return {
+      className: `${baseClasses}${additionalClasses}`,
+      style: { gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr' }
+    };
   };
 
   // Helper function to format amount (show 0 kr instead of -0 kr)
@@ -328,7 +331,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid grid-cols-4 gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold">
+            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr'}}>
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
@@ -345,9 +348,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 return (
                   <div 
                     key={index} 
-                    className={`${getStyleClasses(item.style)} ${
+                    className={`${getStyleClasses(item.style).className} ${
                       item.level === 0 ? 'border-b pb-1' : ''
                     }`}
+                    style={getStyleClasses(item.style).style}
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">
@@ -387,7 +391,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid grid-cols-4 gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold">
+            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 0.5fr 1.5fr 1.5fr'}}>
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
@@ -404,9 +408,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 return (
                   <div 
                     key={index} 
-                    className={`${getStyleClasses(item.style)} ${
+                    className={`${getStyleClasses(item.style).className} ${
                       item.level === 0 ? 'border-b pb-1' : ''
                     }`}
+                    style={getStyleClasses(item.style).style}
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">

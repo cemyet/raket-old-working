@@ -371,7 +371,7 @@ export function AnnualReportChat() {
     <div className="h-screen bg-background font-sans">
       <ResizablePanelGroup direction="horizontal" className="h-full">
         {/* Chat Panel */}
-        <ResizablePanel defaultSize={40} minSize={30}>
+        <ResizablePanel defaultSize={30} minSize={25}>
           <div className="h-full flex flex-col">
             {/* Clean Header */}
             <div className="px-6 py-4 border-b border-border">
