@@ -298,8 +298,12 @@ class DatabaseParser:
         # Second pass: Calculate formulas using all available data
         print(f"DEBUG: Available variables in results: {[r.get('variable_name') for r in results if r.get('variable_name')]}")
         
-        for i, mapping in enumerate(self.rr_mappings):
-            if mapping.get('is_calculated'):
+        # Sort calculated mappings by row_id to ensure dependencies are calculated first
+        calculated_mappings = [(i, mapping) for i, mapping in enumerate(self.rr_mappings) 
+                              if mapping.get('is_calculated')]
+        calculated_mappings.sort(key=lambda x: int(x[1]['row_id']))
+        
+        for i, mapping in calculated_mappings:
                 # Special debugging for "Summa eget kapital"
                 if "eget kapital" in mapping['row_title'].lower():
                     print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL ===")
