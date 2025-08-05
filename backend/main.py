@@ -83,7 +83,9 @@ async def upload_se_file(file: UploadFile = File(...)):
         current_accounts, previous_accounts = parser.parse_account_balances(se_content)
         company_info = parser.extract_company_info(se_content)
         rr_data = parser.parse_rr_data(current_accounts, previous_accounts)
-        br_data = parser.parse_br_data(current_accounts, previous_accounts)
+        
+        # Pass RR data to BR parsing so calculated values from RR are available
+        br_data = parser.parse_br_data(current_accounts, previous_accounts, rr_data)
         
         # Store financial data in database
         if company_info.get('org_number'):
