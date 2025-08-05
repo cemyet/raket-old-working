@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
 
 interface CompanyData {
@@ -67,7 +68,8 @@ interface CompanyData {
       current_amount: number | null;
       previous_amount: number | null;
       level: number;
-      bold: boolean;
+      section: string;
+      bold?: boolean;
       style?: string;
     }>;
     br_data?: Array<{
@@ -76,7 +78,9 @@ interface CompanyData {
       current_amount: number | null;
       previous_amount: number | null;
       level: number;
-      bold: boolean;
+      section: string;
+      type: 'asset' | 'liability' | 'equity';
+      bold?: boolean;
       style?: string;
     }>;
          company_info?: {
@@ -125,7 +129,21 @@ interface AnnualReportPreviewProps {
   currentStep: number;
 }
 
+// Always show these rows regardless of zero values
+const ALWAYS_SHOW_RR = [
+  'Nettoomsättning', 'Övriga rörelseintäkter', 'Personalkostnader', 
+  'Övriga rörelsekostnader', 'Förändring av periodiseringsfonder', 
+  'Övriga bokslutsdispositioner', 'Skatt på årets resultat'
+];
+
+const ALWAYS_SHOW_BR = [
+  'Årets resultat', 'Balanserat resultat'
+];
+
 export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPreviewProps) {
+  const [showAllRR, setShowAllRR] = useState(false);
+  const [showAllBR, setShowAllBR] = useState(false);
+  
   // Get new database-driven parser data
   const seFileData = companyData.seFileData;
   const rrData = seFileData?.rr_data || [];
@@ -145,7 +163,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
 
   // Helper function to get styling classes based on style
   const getStyleClasses = (style?: string) => {
-    const baseClasses = 'grid grid-cols-3 gap-4';
+    const baseClasses = 'grid grid-cols-4 gap-4';
     let additionalClasses = '';
     
     // Handle bold styling for header styles only
@@ -159,6 +177,54 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     }
     
     return `${baseClasses}${additionalClasses}`;
+  };
+
+  // Helper function to format amount (show 0 kr instead of -0 kr)
+  const formatAmountDisplay = (amount: number | null): string => {
+    if (amount === null || amount === undefined) {
+      return '';
+    }
+    if (amount === 0 || amount === -0) {
+      return '0 kr';
+    }
+    return `${formatAmount(amount)} kr`;
+  };
+
+  // Helper function to check if a block should be shown
+  const shouldShowBlock = (data: any[], startIndex: number, endIndex: number, alwaysShowItems: string[], showAll: boolean): boolean => {
+    if (showAll) return true;
+    
+    // Check if any item in the block has non-zero amounts or is in always show list
+    for (let i = startIndex; i <= endIndex && i < data.length; i++) {
+      const item = data[i];
+      const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
+                              (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
+      const isAlwaysShow = alwaysShowItems.includes(item.label);
+      
+      if (hasNonZeroAmount || isAlwaysShow) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Helper function to check if a row should be shown
+  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean): boolean => {
+    if (showAll) return true;
+    
+    const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
+                            (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
+    const isAlwaysShow = alwaysShowItems.includes(item.label);
+    
+    return hasNonZeroAmount || isAlwaysShow;
+  };
+
+  // Helper function to get note value for specific rows
+  const getNoteValue = (label: string): string => {
+    if (label === 'Personalkostnader') {
+      return '2';
+    }
+    return '';
   };
 
   const getPreviewContent = () => {
@@ -205,10 +271,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
       <div className="space-y-6">
         {/* Company Header */}
         <div className="border-b pb-4">
-                          <h1 className="text-2xl font-bold text-foreground">🚀 ÅRSREDOVISNING 2.3 🚀</h1>
+          <h1 className="text-2xl font-bold text-foreground">Årsredovisning</h1>
           <h2 className="text-xl font-semibold text-foreground mt-2">{headerData.company_name}</h2>
           <p className="text-sm text-muted-foreground">
-            Org.nr: {headerData.organization_number}
+            Organisationsnummer: {headerData.organization_number}
           </p>
           <p className="text-sm text-muted-foreground">
             Räkenskapsår: {headerData.fiscal_year}
@@ -221,33 +287,33 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
         {/* Financial Results Section */}
         {(
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground border-b pb-2">Resultaträkning</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Resultaträkning</h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">Visa alla rader</span>
+                <Switch
+                  checked={showAllRR}
+                  onCheckedChange={setShowAllRR}
+                  className={`${showAllRR ? 'bg-green-500' : 'bg-gray-300'}`}
+                />
+              </div>
+            </div>
             
-            {/* Data Source Info */}
-            <div className="space-y-3">
-              <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Python Strukturerad</span>
-                <span>Komplett resultaträkning från SE-fil</span>
-              </div>
-              
-              {/* Previous Year Column Header */}
-              <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground border-b pb-1">
-                <span>Beskrivning</span>
-                <span className="text-right">{headerData.fiscal_year}</span>
-                <span className="text-right">
-                  {headerData.fiscal_year - 1}
-                  {companyData.incomeStatementYearMinus1 && companyData.incomeStatementYearMinus1.length > 0 ? (
-                    <span className="text-xs text-muted-foreground">({companyData.incomeStatementYearMinus1.length} rader)</span>
-                  ) : (
-                    <span className="text-xs text-red-500">(Ingen data)</span>
-                  )}
-                </span>
-              </div>
+            {/* Column Headers */}
+            <div className="grid grid-cols-4 gap-4 text-xs text-muted-foreground border-b pb-1 font-semibold">
+              <span></span>
+              <span className="text-right">Not</span>
+              <span className="text-right">{headerData.fiscal_year}</span>
+              <span className="text-right">{headerData.fiscal_year - 1}</span>
             </div>
 
             {/* Income Statement Rows */}
             {rrData.length > 0 ? (
               rrData.map((item, index) => {
+                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR)) {
+                  return null;
+                }
+                
                 return (
                   <div 
                     key={index} 
@@ -257,10 +323,13 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">
-                      {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
+                      {getNoteValue(item.label)}
                     </span>
                     <span className="text-right font-medium">
-                      {item.previous_amount !== null ? `${formatAmount(item.previous_amount)} kr` : ''}
+                      {formatAmountDisplay(item.current_amount)}
+                    </span>
+                    <span className="text-right font-medium">
+                      {formatAmountDisplay(item.previous_amount)}
                     </span>
                   </div>
                 );
@@ -277,11 +346,22 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
         {/* Balance Sheet Section */}
         {(
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground border-b pb-2">Balansräkning</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">Balansräkning</h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">Visa alla rader</span>
+                <Switch
+                  checked={showAllBR}
+                  onCheckedChange={setShowAllBR}
+                  className={`${showAllBR ? 'bg-green-500' : 'bg-gray-300'}`}
+                />
+              </div>
+            </div>
             
-            {/* Previous Year Column Header */}
-            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground border-b pb-1">
-              <span>Beskrivning</span>
+            {/* Column Headers */}
+            <div className="grid grid-cols-4 gap-4 text-xs text-muted-foreground border-b pb-1 font-semibold">
+              <span></span>
+              <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
               <span className="text-right">{headerData.fiscal_year - 1}</span>
             </div>
@@ -289,6 +369,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Balance Sheet Rows */}
             {brData.length > 0 ? (
               brData.map((item, index) => {
+                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR)) {
+                  return null;
+                }
+                
                 return (
                   <div 
                     key={index} 
@@ -298,10 +382,13 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   >
                     <span className="text-muted-foreground">{item.label}</span>
                     <span className="text-right font-medium">
-                      {item.current_amount !== null ? `${formatAmount(item.current_amount)} kr` : ''}
+                      {getNoteValue(item.label)}
                     </span>
                     <span className="text-right font-medium">
-                      {item.previous_amount !== null ? `${formatAmount(item.previous_amount)} kr` : ''}
+                      {formatAmountDisplay(item.current_amount)}
+                    </span>
+                    <span className="text-right font-medium">
+                      {formatAmountDisplay(item.previous_amount)}
                     </span>
                   </div>
                 );

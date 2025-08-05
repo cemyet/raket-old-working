@@ -17,6 +17,7 @@ export interface SEData {
     level: number;
     section: string;
     bold?: boolean;
+    style?: string;
   }>;
   br_data?: Array<{
     id: string;
@@ -27,6 +28,7 @@ export interface SEData {
     section: string;
     type: 'asset' | 'liability' | 'equity';
     bold?: boolean;
+    style?: string;
   }>;
   company_info?: {
     organization_number?: string;
