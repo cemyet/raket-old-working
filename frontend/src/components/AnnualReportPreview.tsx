@@ -71,6 +71,7 @@ interface CompanyData {
       section: string;
       bold?: boolean;
       style?: string;
+      block_group?: string;
     }>;
     br_data?: Array<{
       id: string;
@@ -82,6 +83,7 @@ interface CompanyData {
       type: 'asset' | 'liability' | 'equity';
       bold?: boolean;
       style?: string;
+      block_group?: string;
     }>;
          company_info?: {
        organization_number?: string;
@@ -208,10 +210,13 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     return false;
   };
 
-  // Helper function to check if a block has any content
-  const blockHasContent = (data: any[], startIndex: number, endIndex: number, alwaysShowItems: string[]): boolean => {
-    for (let i = startIndex; i <= endIndex && i < data.length; i++) {
-      const item = data[i];
+  // Helper function to check if a block group has any content
+  const blockGroupHasContent = (data: any[], blockGroup: string, alwaysShowItems: string[]): boolean => {
+    if (!blockGroup) return true; // Show items without block_group
+    
+    const blockItems = data.filter(item => item.block_group === blockGroup);
+    
+    for (const item of blockItems) {
       const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
       if (isHeading) continue; // Skip headings when checking block content
       
@@ -226,36 +231,19 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     return false;
   };
 
-  // Helper function to find the block boundaries for a heading
-  const getBlockBoundaries = (data: any[], headingIndex: number): { start: number; end: number } => {
-    const headingLevel = data[headingIndex].level || 0;
-    let end = headingIndex + 1;
-    
-    // Find the end of this block (next heading at same or higher level, or end of data)
-    while (end < data.length) {
-      const currentItem = data[end];
-      const isHeading = currentItem.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(currentItem.style);
-      
-      if (isHeading && currentItem.level <= headingLevel) {
-        break;
-      }
-      end++;
-    }
-    
-    return { start: headingIndex + 1, end: end - 1 };
-  };
-
   // Helper function to check if a row should be shown
-  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean, data: any[], index: number): boolean => {
+  const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean, data: any[]): boolean => {
     if (showAll) return true;
     
     // Check if this is a heading
     const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
     
     if (isHeading) {
-      // For headings, check if their block has content
-      const boundaries = getBlockBoundaries(data, index);
-      return blockHasContent(data, boundaries.start, boundaries.end, alwaysShowItems);
+      // For headings, check if their block group has content
+      if (item.block_group) {
+        return blockGroupHasContent(data, item.block_group, alwaysShowItems);
+      }
+      return true; // Show headings without block_group
     }
     
     const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
@@ -356,7 +344,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Income Statement Rows */}
             {rrData.length > 0 ? (
               rrData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR, rrData, index)) {
+                if (!shouldShowRow(item, ALWAYS_SHOW_RR, showAllRR, rrData)) {
                   return null;
                 }
                 
@@ -415,7 +403,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Balance Sheet Rows */}
             {brData.length > 0 ? (
               brData.map((item, index) => {
-                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR, brData, index)) {
+                if (!shouldShowRow(item, ALWAYS_SHOW_BR, showAllBR, brData)) {
                   return null;
                 }
                 

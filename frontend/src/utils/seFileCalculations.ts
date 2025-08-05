@@ -18,6 +18,7 @@ export interface SEData {
     section: string;
     bold?: boolean;
     style?: string;
+    block_group?: string;
   }>;
   br_data?: Array<{
     id: string;
@@ -29,6 +30,7 @@ export interface SEData {
     type: 'asset' | 'liability' | 'equity';
     bold?: boolean;
     style?: string;
+    block_group?: string;
   }>;
   company_info?: {
     organization_number?: string;
