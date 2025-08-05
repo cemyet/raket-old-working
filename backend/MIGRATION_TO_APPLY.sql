@@ -1,15 +1,18 @@
--- Add block_group column to both RR and BR mapping tables
--- This allows us to group related items together for better visibility control
+-- ======================================================================
+-- MIGRATION: Add block_group column to RR and BR mapping tables
+-- ======================================================================
+-- Execute this SQL in your Supabase SQL Editor (Dashboard > SQL Editor)
+-- This adds block_group column to the left of the style column for better organization
 
--- Add block_group to RR table (positioned before style column)
+-- Step 1: Add block_group column to RR table
 ALTER TABLE variable_mapping_rr 
 ADD COLUMN block_group TEXT;
 
--- Add block_group to BR table (positioned before style column)
+-- Step 2: Add block_group column to BR table
 ALTER TABLE variable_mapping_br 
 ADD COLUMN block_group TEXT;
 
--- Update RR mappings with block groups (based on actual structure)
+-- Step 3: Update RR mappings with block groups
 -- Group 1: Rörelseintäkter (H2 + content + sum)
 UPDATE variable_mapping_rr SET block_group = 'rorelseintakter' WHERE row_id BETWEEN 242 AND 247;
 
@@ -25,7 +28,7 @@ UPDATE variable_mapping_rr SET block_group = 'bokslutsdispositioner' WHERE row_i
 -- Group 5: Skatter (H1 + content)
 UPDATE variable_mapping_rr SET block_group = 'skatter' WHERE row_id BETWEEN 276 AND 278;
 
--- Update BR mappings with block groups (based on actual structure)
+-- Step 4: Update BR mappings with block groups
 -- Group 1: Immateriella anläggningstillgångar (H3 + content + sum)
 UPDATE variable_mapping_br SET block_group = 'immateriella_anlaggningar' WHERE row_id BETWEEN 314 AND 319;
 
@@ -64,3 +67,25 @@ UPDATE variable_mapping_br SET block_group = 'langfristiga_skulder' WHERE row_id
 
 -- Group 13: Kortfristiga skulder (H2 + content + sum)
 UPDATE variable_mapping_br SET block_group = 'kortfristiga_skulder' WHERE row_id BETWEEN 402 AND 416;
+
+-- ======================================================================
+-- VERIFICATION QUERIES (Optional - run these to verify the migration)
+-- ======================================================================
+
+-- Check RR block groups
+SELECT block_group, COUNT(*) as count, MIN(row_id) as start_id, MAX(row_id) as end_id
+FROM variable_mapping_rr 
+WHERE block_group IS NOT NULL
+GROUP BY block_group 
+ORDER BY MIN(row_id);
+
+-- Check BR block groups  
+SELECT block_group, COUNT(*) as count, MIN(row_id) as start_id, MAX(row_id) as end_id
+FROM variable_mapping_br 
+WHERE block_group IS NOT NULL
+GROUP BY block_group 
+ORDER BY MIN(row_id);
+
+-- ======================================================================
+-- MIGRATION COMPLETE
+-- ======================================================================
