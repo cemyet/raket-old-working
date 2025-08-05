@@ -4,7 +4,7 @@ from datetime import datetime
 
 class CompanyData(BaseModel):
     """Företagsdata från .SE-fil"""
-    org_number: str
+    organization_number: str
     company_name: str
     fiscal_year: int
     previous_year: int
@@ -46,7 +46,7 @@ class UserReport(BaseModel):
 
 class CompanyInfo(BaseModel):
     """Företagsinformation från Allabolag.se"""
-    org_number: str
+    organization_number: str
     company_name: str
     business_description: str
     location: str

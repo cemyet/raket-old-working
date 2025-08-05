@@ -88,8 +88,8 @@ async def upload_se_file(file: UploadFile = File(...)):
         br_data = parser.parse_br_data(current_accounts, previous_accounts, rr_data)
         
         # Store financial data in database
-        if company_info.get('org_number'):
-            company_id = company_info['org_number']
+        if company_info.get('organization_number'):
+            company_id = company_info['organization_number']
             fiscal_year = company_info.get('fiscal_year', datetime.now().year)
             
             # Store the parsed financial data
@@ -178,13 +178,13 @@ async def get_user_reports(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fel vid hämtning av rapporter: {str(e)}")
 
-@app.get("/company-info/{org_number}")
-async def get_company_info(org_number: str):
+@app.get("/company-info/{organization_number}")
+async def get_company_info(organization_number: str):
     """
     Hämtar företagsinformation från Allabolag.se
     """
     try:
-        company_info = await report_generator.scrape_company_info(org_number)
+        company_info = await report_generator.scrape_company_info(organization_number)
         return company_info
         
     except Exception as e:
@@ -257,8 +257,8 @@ async def test_parser(file: UploadFile = File(...)):
         print(f"Generated {len(rr_data)} RR items, {len(br_data)} BR items")
         
         # Store financial data in database
-        if company_info.get('org_number'):
-            company_id = company_info['org_number']
+        if company_info.get('organization_number'):
+            company_id = company_info['organization_number']
             fiscal_year = company_info.get('fiscal_year', datetime.now().year)
             
             # Store the parsed financial data

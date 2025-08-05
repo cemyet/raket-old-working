@@ -569,7 +569,7 @@ class DatabaseParser:
                 # Organization number: #ORGNR 556610-3643
                 parts = line.split()
                 if len(parts) >= 2:
-                    company_info['org_number'] = parts[1]
+                    company_info['organization_number'] = parts[1]
                     
             elif line.startswith('#RAR'):
                 # Fiscal year: #RAR 0 20240101 20241231

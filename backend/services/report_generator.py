@@ -53,7 +53,7 @@ class ReportGenerator:
         """
         try:
             # Extrahera organisationsnummer
-            org_number = extract_orgnr_from_se(se_file_path)
+            organization_number = extract_orgnr_from_se(se_file_path)
             
             # Extrahera räkenskapsår
             current_year, previous_year, current_end_date_raw, previous_end_date_raw, current_year_string, previous_year_string, current_end_date_iso, previous_end_date_iso = extract_fiscal_year_robust(se_file_path)
@@ -62,8 +62,8 @@ class ReportGenerator:
             account_balances, prev_year_balances = extract_account_balances_from_se(se_file_path)
             
             return {
-                "org_number": org_number,
-                "company_name": f"Företag {org_number}",  # Kan förbättras med Allabolag-scraping
+                "organization_number": organization_number,
+                "company_name": f"Företag {organization_number}",  # Kan förbättras med Allabolag-scraping
                 "fiscal_year": current_year,
                 "previous_year": previous_year,
                 "current_end_date": current_end_date_string,
@@ -109,7 +109,7 @@ class ReportGenerator:
             print(f"📈 Parsed {len(rr_data)} RR items and {len(br_data)} BR items")
             
             # Store financial data in database
-            company_id = request.company_data.org_number  # Using org_number as company_id for now
+            company_id = request.company_data.organization_number  # Using organization_number as company_id for now
             fiscal_year = request.company_data.fiscal_year
             
             stored_ids = self.database_parser.store_financial_data(
@@ -230,17 +230,17 @@ class ReportGenerator:
         """Hämtar sökväg till genererad rapport"""
         return os.path.join(self.reports_dir, f"arsredovisning_{report_id}.pdf")
     
-    async def scrape_company_info(self, org_number: str) -> Dict[str, Any]:
+    async def scrape_company_info(self, organization_number: str) -> Dict[str, Any]:
         """
         Hämtar företagsinformation från Allabolag.se
         """
         try:
             # Använd befintlig scraping-funktion
-            company_data = scrape_allabolag_data(org_number, 2024, 2023, 2022, 2021)
+            company_data = scrape_allabolag_data(organization_number, 2024, 2023, 2022, 2021)
             
             if company_data:
                 return {
-                    "org_number": org_number,
+                    "organization_number": organization_number,
                     "company_name": company_data.get("company_name", ""),
                     "business_description": company_data.get("verksamhet", ""),
                     "location": company_data.get("sate", ""),
@@ -250,8 +250,8 @@ class ReportGenerator:
                 }
             else:
                 return {
-                    "org_number": org_number,
-                    "company_name": f"Företag {org_number}",
+                    "organization_number": organization_number,
+                    "company_name": f"Företag {organization_number}",
                     "business_description": "Information kunde inte hämtas",
                     "location": "",
                     "board_members": [],
