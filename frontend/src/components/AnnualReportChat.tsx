@@ -281,8 +281,9 @@ export function AnnualReportChat() {
       
       // Extract SumAretsResultat for chat options
       const sumAretsResultatItem = data.data.rr_data.find((item: any) => 
-        item.label?.toLowerCase().includes('sumaretsresultat') || 
-        item.variable_name === 'SumAretsResultat'
+        item.variable_name === 'SumAretsResultat' ||
+        item.label?.toLowerCase().includes('årets resultat') ||
+        item.label?.toLowerCase().includes('sumaretsresultat')
       );
       if (sumAretsResultatItem && sumAretsResultatItem.current_amount !== null) {
         sumAretsResultat = Math.abs(sumAretsResultatItem.current_amount);
@@ -290,8 +291,9 @@ export function AnnualReportChat() {
       
       // Extract SumFrittEgetKapital for chat options
       const sumFrittEgetKapitalItem = data.data.rr_data.find((item: any) => 
-        item.label?.toLowerCase().includes('sumfrittegetkapital') || 
-        item.variable_name === 'SumFrittEgetKapital'
+        item.variable_name === 'SumFrittEgetKapital' ||
+        item.label?.toLowerCase().includes('sumfrittegetkapital') ||
+        item.label?.toLowerCase().includes('fritt eget kapital')
       );
       if (sumFrittEgetKapitalItem && sumFrittEgetKapitalItem.current_amount !== null) {
         sumFrittEgetKapital = Math.abs(sumFrittEgetKapitalItem.current_amount);
@@ -326,7 +328,8 @@ export function AnnualReportChat() {
       addMessage("Perfekt! 🎉 Komplett årsredovisning skapad från SE-filen.", true, "✅");
       setTimeout(() => {
         if (extractedResults) {
-          addMessage(`Årets resultat: ${extractedResults} kr. Se fullständig rapport till höger!`, true, "💰");
+          const displayAmount = sumAretsResultat ? Math.round(sumAretsResultat).toLocaleString('sv-SE') : extractedResults;
+          addMessage(`Årets resultat: ${displayAmount} kr. Se fullständig rapport till höger!`, true, "💰");
           setTimeout(() => {
             addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
             setCurrentStep(0.5);

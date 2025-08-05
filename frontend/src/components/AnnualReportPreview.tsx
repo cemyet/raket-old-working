@@ -212,6 +212,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   const shouldShowRow = (item: any, alwaysShowItems: string[], showAll: boolean): boolean => {
     if (showAll) return true;
     
+    // Always show headings (H0, H1, H2, H3, S1, S2, S3)
+    const isHeading = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3'].includes(item.style);
+    if (isHeading) return true;
+    
     const hasNonZeroAmount = (item.current_amount !== null && item.current_amount !== 0 && item.current_amount !== -0) ||
                             (item.previous_amount !== null && item.previous_amount !== 0 && item.previous_amount !== -0);
     const isAlwaysShow = alwaysShowItems.includes(item.label);
@@ -274,7 +278,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
           <h1 className="text-2xl font-bold text-foreground">Årsredovisning</h1>
           <h2 className="text-xl font-semibold text-foreground mt-2">{headerData.company_name}</h2>
           <p className="text-sm text-muted-foreground">
-            Organisationsnummer: {headerData.organization_number}
+            Organisationsnummer: {headerData.organization_number || 'Ej tillgängligt'}
           </p>
           <p className="text-sm text-muted-foreground">
             Räkenskapsår: {headerData.fiscal_year}
@@ -300,7 +304,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid grid-cols-4 gap-4 text-xs text-muted-foreground border-b pb-1 font-semibold">
+            <div className="grid grid-cols-4 gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold">
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
@@ -359,7 +363,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             </div>
             
             {/* Column Headers */}
-            <div className="grid grid-cols-4 gap-4 text-xs text-muted-foreground border-b pb-1 font-semibold">
+            <div className="grid grid-cols-4 gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold">
               <span></span>
               <span className="text-right">Not</span>
               <span className="text-right">{headerData.fiscal_year}</span>
