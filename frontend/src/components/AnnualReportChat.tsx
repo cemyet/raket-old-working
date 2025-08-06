@@ -452,8 +452,8 @@ export function AnnualReportChat() {
                 </div>
               )}
 
-              {/* File Upload - Always show first */}
-              {currentStep === -1 && (
+              {/* File Upload - Only show at start before any data processing */}
+              {currentStep === -1 && !companyData.seFileData && (
                 <div className="space-y-3">
                   <FileUpload 
                     onFileProcessed={handleFileProcessed} 

@@ -166,8 +166,8 @@ export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
         </div>
       </div>
 
-      {/* Test Parser Button */}
-      {selectedFile && (
+      {/* Test Parser Button - Only show before any processing */}
+      {selectedFile && !isUploading && !hasStartedProcessing && (
         <div className="flex justify-center">
           <Button
             variant="secondary"
