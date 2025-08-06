@@ -392,8 +392,12 @@ export function AnnualReportChat() {
             {/* Clean Header */}
             <div className="px-6 py-4 border-b border-border">
               <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-base font-medium text-foreground">RaketRapport</h1>
+                <div className="flex items-center space-x-2">
+                  <img 
+                    src="/raketrapport logo black.png" 
+                    alt="RaketRapport" 
+                    className="h-6 w-auto"
+                  />
                   <p className="text-xs text-muted-foreground">Årsredovisning på 5 minuter</p>
                 </div>
                 {currentStep > 0 && (
