@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Loader2, TestTube } from 'lucide-react';
+import { Upload, FileText, Loader2 } from 'lucide-react';
 import { apiService } from '@/services/api';
 
 interface FileUploadProps {
   onFileProcessed: (data: any) => void;
-  onTestParser?: (file: File) => void;
 }
 
-export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
+export function FileUpload({ onFileProcessed }: FileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -55,20 +54,7 @@ export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
     }
   };
 
-  const handleTestParser = async () => {
-    if (!selectedFile) {
-      toast({
-        title: "Ingen fil vald",
-        description: "Ladda upp en .SE fil först",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    if (onTestParser) {
-      onTestParser(selectedFile);
-    }
-  };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -166,21 +152,7 @@ export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
         </div>
       </div>
 
-      {/* Test Parser Button - Only show before any processing */}
-      {selectedFile && !isUploading && !hasStartedProcessing && (
-        <div className="flex justify-center">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleTestParser}
-            disabled={isUploading}
-            className="gap-2"
-          >
-            <TestTube className="w-3 h-3" />
-            Test Parser
-          </Button>
-        </div>
-      )}
+
     </div>
   );
 }

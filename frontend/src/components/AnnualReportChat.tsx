@@ -227,11 +227,12 @@ export function AnnualReportChat() {
     return converted;
   };
 
+  /* REMOVED: testParser function - no longer needed since normal upload works perfectly
   const testParser = async (file: File) => {
     try {
       addMessage("🧪 Testar ny databas-driven parser...", true, "🔬");
       
-      const result = await apiService.testParser(file);
+      // REMOVED: testParser API call
       
       addMessage(`✅ Parser test lyckades!`, true, "✅");
       addMessage(`📊 Hittade ${result.current_accounts_count} konton`, true, "📊");
@@ -257,7 +258,7 @@ export function AnnualReportChat() {
         variant: "destructive",
       });
     }
-  };
+  }; */
 
   const handleFileProcessed = (data: any) => {
 
@@ -457,7 +458,6 @@ export function AnnualReportChat() {
                 <div className="space-y-3">
                   <FileUpload 
                     onFileProcessed={handleFileProcessed} 
-                    onTestParser={testParser}
                   />
                 </div>
               )}
