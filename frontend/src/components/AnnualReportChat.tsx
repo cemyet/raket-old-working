@@ -279,6 +279,9 @@ export function AnnualReportChat() {
     let sumAretsResultat = null;
     let sumFrittEgetKapital = null;
     
+    // Debug: Log the structure to help diagnose
+    console.log('File processed data structure:', data.data);
+    
     // Try to extract net result from RR data
     if (data.data?.rr_data) {
       const netResultItem = data.data.rr_data.find((item: any) => 
@@ -288,24 +291,33 @@ export function AnnualReportChat() {
         extractedResults = Math.abs(netResultItem.current_amount).toString();
       }
       
-      // Extract SumAretsResultat for chat options
-      const sumAretsResultatItem = data.data.rr_data.find((item: any) => 
-        item.variable_name === 'SumAretsResultat' ||
-        item.label?.toLowerCase().includes('årets resultat') ||
-        item.label?.toLowerCase().includes('sumaretsresultat')
+      // Extract SumAretsResultat for chat options (check RR first, then BR)
+      let sumAretsResultatItem = data.data.rr_data.find((item: any) => 
+        item.variable_name === 'SumAretsResultat'
       );
+      if (!sumAretsResultatItem && data.data?.br_data) {
+        sumAretsResultatItem = data.data.br_data.find((item: any) => 
+          item.variable_name === 'SumAretsResultat'
+        );
+      }
       if (sumAretsResultatItem && sumAretsResultatItem.current_amount !== null) {
         sumAretsResultat = Math.abs(sumAretsResultatItem.current_amount);
+        console.log('Found SumAretsResultat:', sumAretsResultat);
+      } else {
+        console.log('SumAretsResultat not found or null');
       }
-      
-      // Extract SumFrittEgetKapital for chat options
-      const sumFrittEgetKapitalItem = data.data.rr_data.find((item: any) => 
-        item.variable_name === 'SumFrittEgetKapital' ||
-        item.label?.toLowerCase().includes('sumfrittegetkapital') ||
-        item.label?.toLowerCase().includes('fritt eget kapital')
+    }
+    
+    // Extract SumFrittEgetKapital from BR data  
+    if (data.data?.br_data) {
+      const sumFrittEgetKapitalItem = data.data.br_data.find((item: any) => 
+        item.variable_name === 'SumFrittEgetKapital'
       );
       if (sumFrittEgetKapitalItem && sumFrittEgetKapitalItem.current_amount !== null) {
         sumFrittEgetKapital = Math.abs(sumFrittEgetKapitalItem.current_amount);
+        console.log('Found SumFrittEgetKapital:', sumFrittEgetKapital);
+      } else {
+        console.log('SumFrittEgetKapital not found or null');
       }
     }
     
@@ -321,6 +333,7 @@ export function AnnualReportChat() {
     }
     
     // Store the complete structured data including calculated values
+    console.log('Storing values - sumAretsResultat:', sumAretsResultat, 'sumFrittEgetKapital:', sumFrittEgetKapital);
     setCompanyData(prev => ({ 
       ...prev, 
       seFileData: data.data,
