@@ -40,6 +40,16 @@ export function AnnualReportChat() {
   const [showInput, setShowInput] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  
+  // Format number input with thousand separators
+  const formatNumberInput = (value: string) => {
+    // Remove all non-digits
+    const numbers = value.replace(/\D/g, '');
+    if (numbers === '') return '';
+    
+    // Format with Swedish thousand separators
+    return parseInt(numbers).toLocaleString('sv-SE');
+  };
 
   const [messages, setMessages] = useState([
     {
@@ -101,11 +111,12 @@ export function AnnualReportChat() {
   };
 
   const handleCustomDividendInput = () => {
-    const amount = parseFloat(inputValue);
-    if (isNaN(amount)) return;
+    // Parse the formatted input by removing thousand separators
+    const amount = parseFloat(inputValue.replace(/\s/g, '').replace(/\u00A0/g, '')); // Remove spaces and non-breaking spaces
+    if (isNaN(amount) || amount < 0) return;
     
     setCompanyData(prev => ({ ...prev, customDividend: amount }));
-    addMessage(inputValue + " kr", false);
+    addMessage(`${inputValue} kr`, false);
     
     setTimeout(() => {
       setCurrentStep(1);
@@ -309,7 +320,7 @@ export function AnnualReportChat() {
       }
     }
     
-    // Store the complete structured data
+    // Store the complete structured data including calculated values
     setCompanyData(prev => ({ 
       ...prev, 
       seFileData: data.data,
@@ -325,7 +336,7 @@ export function AnnualReportChat() {
     setTimeout(() => {
       addMessage("Perfekt! 🎉 Komplett årsredovisning skapad från SE-filen.", true, "✅");
       setTimeout(() => {
-        if (extractedResults) {
+        if (extractedResults || sumAretsResultat) {
           const displayAmount = sumAretsResultat ? Math.round(sumAretsResultat).toLocaleString('sv-SE') : extractedResults;
           addMessage(`Årets resultat: ${displayAmount} kr. Se fullständig rapport till höger!`, true, "💰");
           setTimeout(() => {
@@ -415,9 +426,12 @@ export function AnnualReportChat() {
                     />
                   ) : currentStep === 0.5 ? (
                     <Input
-                      type="number"
+                      type="text"
                       value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
+                      onChange={(e) => {
+                        const formatted = formatNumberInput(e.target.value);
+                        setInputValue(formatted);
+                      }}
                       placeholder="Ange utdelningsbelopp i kr..."
                       className="flex-1 border-none bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-0"
                     />
