@@ -279,8 +279,7 @@ export function AnnualReportChat() {
     let sumAretsResultat = null;
     let sumFrittEgetKapital = null;
     
-    // Debug: Log the structure to help diagnose
-    console.log('File processed data structure:', data.data);
+
     
     // Try to extract net result from RR data
     if (data.data?.rr_data) {
@@ -302,9 +301,7 @@ export function AnnualReportChat() {
       }
       if (sumAretsResultatItem && sumAretsResultatItem.current_amount !== null) {
         sumAretsResultat = Math.abs(sumAretsResultatItem.current_amount);
-        console.log('Found SumAretsResultat:', sumAretsResultat);
-      } else {
-        console.log('SumAretsResultat not found or null');
+
       }
     }
     
@@ -315,9 +312,7 @@ export function AnnualReportChat() {
       );
       if (sumFrittEgetKapitalItem && sumFrittEgetKapitalItem.current_amount !== null) {
         sumFrittEgetKapital = Math.abs(sumFrittEgetKapitalItem.current_amount);
-        console.log('Found SumFrittEgetKapital:', sumFrittEgetKapital);
-      } else {
-        console.log('SumFrittEgetKapital not found or null');
+
       }
     }
     
@@ -333,7 +328,6 @@ export function AnnualReportChat() {
     }
     
     // Store the complete structured data including calculated values
-    console.log('Storing values - sumAretsResultat:', sumAretsResultat, 'sumFrittEgetKapital:', sumFrittEgetKapital);
     setCompanyData(prev => ({ 
       ...prev, 
       seFileData: data.data,
