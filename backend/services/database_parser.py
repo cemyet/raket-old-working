@@ -296,7 +296,6 @@ class DatabaseParser:
                 })
         
         # Second pass: Calculate formulas using all available data
-        print(f"DEBUG: Available variables in results: {[r.get('variable_name') for r in results if r.get('variable_name')]}")
         
         # Sort calculated mappings by row_id to ensure dependencies are calculated first
         calculated_mappings = [(i, mapping) for i, mapping in enumerate(self.rr_mappings) 
@@ -304,16 +303,11 @@ class DatabaseParser:
         calculated_mappings.sort(key=lambda x: int(x[1]['row_id']))
         
         for i, mapping in calculated_mappings:
-                # Special debugging for "Summa eget kapital"
-                if "eget kapital" in mapping['row_title'].lower():
-                    print(f"DEBUG: === SPECIAL DEBUG FOR EGET KAPITAL ===")
-                    print(f"DEBUG: Formula: {mapping.get('calculation_formula')}")
-                    print(f"DEBUG: Variable name: {mapping.get('variable_name')}")
+
                 
                 current_amount = self.calculate_formula_value(mapping, current_accounts, results, use_previous_year=False)
                 previous_amount = self.calculate_formula_value(mapping, previous_accounts or {}, results, use_previous_year=True)
-                
-                print(f"DEBUG: Formula calculation - {mapping['row_title']}: current={current_amount}, previous={previous_amount}")
+
                 
                 # Find and update the correct result by row_id
                 for result in results:

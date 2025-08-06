@@ -144,11 +144,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   const companyInfo = seFileData?.company_info || {};
   
   // Debug logging
-  console.log('AnnualReportPreview - seFileData:', seFileData);
-  console.log('AnnualReportPreview - rrData length:', rrData.length);
-  console.log('AnnualReportPreview - brData length:', brData.length);
-  console.log('AnnualReportPreview - sample RR data:', rrData.slice(0, 3));
-  console.log('AnnualReportPreview - sample BR data:', brData.slice(0, 3));
+
   
 
   

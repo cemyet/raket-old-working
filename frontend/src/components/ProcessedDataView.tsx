@@ -97,7 +97,7 @@ export function ProcessedDataView({ data, reportId }: ProcessedDataViewProps) {
 
   const generatePDF = async () => {
     // TODO: Implement PDF generation
-    console.log('Generate PDF for report:', reportId);
+
   };
 
   // Helper function to normalize data to new format

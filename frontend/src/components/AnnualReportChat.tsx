@@ -69,8 +69,7 @@ export function AnnualReportChat() {
   });
 
   // Debug logging - after all state declarations
-  console.log('AnnualReportChat render - currentStep:', currentStep, 'showFileUpload:', showFileUpload);
-  console.log('🔍 AnnualReportPreview will render:', currentStep >= 0 || companyData.seFileData);
+
 
   const addMessage = (text: string, isBot = true, emoji?: string) => {
     setMessages(prev => [...prev, { text, isBot, emoji }]);
@@ -224,7 +223,7 @@ export function AnnualReportChat() {
       }
     };
     
-    console.log('Converted parser data:', converted);
+    
     return converted;
   };
 
@@ -238,13 +237,11 @@ export function AnnualReportChat() {
       addMessage(`📊 Hittade ${result.current_accounts_count} konton`, true, "📊");
       addMessage(`📈 ${result.rr_count} RR-poster, ${result.br_count} BR-poster`, true, "📈");
       
-      console.log('Parser test result:', result);
+
       
       // Convert new format to old format and store for preview
       const convertedData = convertNewParserFormat(result);
-      console.log('Converted data for preview:', convertedData.data);
-      console.log('Sample RR data:', convertedData.data.rr_data?.slice(0, 3));
-      console.log('Sample BR data:', convertedData.data.br_data?.slice(0, 3));
+      
       
       setCompanyData(prev => ({ 
         ...prev, 
@@ -263,7 +260,7 @@ export function AnnualReportChat() {
   };
 
   const handleFileProcessed = (data: any) => {
-    console.log('File processed data:', data);
+
     
     // Handle new database-driven parser format
     let extractedResults = null;
@@ -350,11 +347,11 @@ export function AnnualReportChat() {
 
 
   const handleUseFileUpload = () => {
-    console.log('handleUseFileUpload called');
+
     addMessage("Ja, jag har en SE-fil", false);
     setTimeout(() => {
       addMessage("Bra! Ladda upp din .SE fil så analyserar jag den åt dig. 📁", true, "📤");
-      console.log('Setting showFileUpload to true');
+  
       setShowFileUpload(true);
     }, 1000);
   };

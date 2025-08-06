@@ -15,7 +15,7 @@ export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
-  console.log('FileUpload component rendered');
+
 
   const processFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.se')) {
@@ -177,7 +177,7 @@ export function FileUpload({ onFileProcessed, onTestParser }: FileUploadProps) {
             className="gap-2"
           >
             <TestTube className="w-3 h-3" />
-            Testa Ny Parser
+            Test Parser
           </Button>
         </div>
       )}
