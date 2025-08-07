@@ -390,7 +390,7 @@ export function AnnualReportChat() {
         <ResizablePanel defaultSize={30} minSize={25}>
           <div className="h-full flex flex-col">
             {/* Clean Header */}
-            <div className="px-6 py-8 border-b border-border">
+            <div className="px-6 py-4 border-b border-border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center">
                   <img 
