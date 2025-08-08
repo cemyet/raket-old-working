@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { AnnualReportPreview } from "./AnnualReportPreview";
 import { FileUpload } from "./FileUpload";
+import { TaxCalculation } from "./TaxCalculation";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Upload, TestTube } from "lucide-react";
 import { apiService } from "@/services/api";
@@ -32,6 +33,7 @@ interface CompanyData {
   sumFrittEgetKapital?: number; // From SE file RR data
   taxApproved: boolean; // New field for tax approval
   skattAretsResultat: number | null; // New field for tax amount
+  ink2Data?: any[]; // INK2 tax calculation data
 }
 
 const TOTAL_STEPS = 5;
@@ -79,7 +81,8 @@ export function AnnualReportChat() {
       { name: "Anna Andersson", personalNumber: "851201-1234" }
     ],
     taxApproved: false, // New field for tax approval
-    skattAretsResultat: null // New field for tax amount
+    skattAretsResultat: null, // New field for tax amount
+    ink2Data: [] // INK2 tax calculation data
   });
 
   // Debug logging - after all state declarations
@@ -150,16 +153,20 @@ export function AnnualReportChat() {
         setCurrentStep(0.5);
       }, 1000);
     } else {
-      // If tax needs review, we'll show new functionality later
-      // For now, continue to dividends  
+      // If tax needs review, show INK2 tax calculations
       setTimeout(() => {
-        addMessage("Vi kommer snart att lägga till funktionalitet för skattemässiga justeringar. Låt oss fortsätta med utdelning.", true, "🔧");
-        setTimeout(() => {
-          addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-          setCurrentStep(0.5);
-        }, 1000);
+        addMessage("Här ser du skatteberäkningen som din revisor kan justera:", true, "🔧");
+        setCurrentStep(0.3); // New step for showing tax calculations
       }, 1000);
     }
+  };
+
+  const handleTaxContinue = () => {
+    addMessage("Fortsätt till utdelning", false);
+    setTimeout(() => {
+      addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
+      setCurrentStep(0.5);
+    }, 1000);
   };
 
   const handleDividend = (type: string) => {
@@ -379,6 +386,7 @@ export function AnnualReportChat() {
       sumAretsResultat: sumAretsResultat,
       sumFrittEgetKapital: sumFrittEgetKapital,
       skattAretsResultat: skattAretsResultat,
+      ink2Data: data.data?.ink2_data || [],
       organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
       fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
       location: data.data?.company_info?.location || prev.location,
@@ -556,6 +564,16 @@ export function AnnualReportChat() {
                   <OptionButton onClick={() => handleTaxApproval(false)}>
                     Nej, jag vill se över justeringarna
                   </OptionButton>
+                </div>
+              )}
+
+              {currentStep === 0.3 && (
+                <div className="mt-4">
+                  <TaxCalculation 
+                    ink2Data={companyData.ink2Data || []}
+                    fiscalYear={companyData.fiscalYear}
+                    onContinue={handleTaxContinue}
+                  />
                 </div>
               )}
 

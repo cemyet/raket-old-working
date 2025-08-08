@@ -87,6 +87,9 @@ async def upload_se_file(file: UploadFile = File(...)):
         # Pass RR data to BR parsing so calculated values from RR are available
         br_data = parser.parse_br_data(current_accounts, previous_accounts, rr_data)
         
+        # Parse INK2 data (tax calculations)
+        ink2_data = parser.parse_ink2_data(current_accounts, company_info.get('fiscal_year'))
+        
         # Store financial data in database
         if company_info.get('organization_number'):
             company_id = company_info['organization_number']
@@ -109,8 +112,10 @@ async def upload_se_file(file: UploadFile = File(...)):
                 "previous_accounts_sample": dict(list(previous_accounts.items())[:10]),
                 "rr_data": rr_data,
                 "br_data": br_data,
+                "ink2_data": ink2_data,
                 "rr_count": len(rr_data),
-                "br_count": len(br_data)
+                "br_count": len(br_data),
+                "ink2_count": len(ink2_data)
             },
             "message": "SE-fil laddad framgångsrikt"
         }

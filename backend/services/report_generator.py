@@ -106,7 +106,13 @@ class ReportGenerator:
             rr_data = self.database_parser.parse_rr_data(current_accounts, previous_accounts)
             br_data = self.database_parser.parse_br_data(current_accounts, previous_accounts)
             
-            print(f"📈 Parsed {len(rr_data)} RR items and {len(br_data)} BR items")
+            # Parse INK2 data (tax calculations)
+            ink2_data = self.database_parser.parse_ink2_data(
+                current_accounts=current_accounts,
+                fiscal_year=company_data.get('fiscal_year')
+            )
+            
+            print(f"📈 Parsed {len(rr_data)} RR items, {len(br_data)} BR items, and {len(ink2_data)} INK2 items")
             
             # Store financial data in database
             company_id = request.company_data.organization_number  # Using organization_number as company_id for now

@@ -22,6 +22,9 @@ class DatabaseParser:
     def __init__(self):
         self.rr_mappings = None
         self.br_mappings = None
+        self.ink2_mappings = None
+        self.global_variables = None
+        self.accounts_lookup = None
         self._load_mappings()
     
     def _load_mappings(self):
@@ -35,12 +38,27 @@ class DatabaseParser:
             br_response = supabase.table('variable_mapping_br').select('*').execute()
             self.br_mappings = br_response.data
             
-            print(f"Loaded {len(self.rr_mappings)} RR mappings and {len(self.br_mappings)} BR mappings")
+            # Load INK2 mappings
+            ink2_response = supabase.table('variable_mapping_ink2').select('*').execute()
+            self.ink2_mappings = ink2_response.data
+            
+            # Load global variables
+            global_vars_response = supabase.table('global_variables').select('*').execute()
+            self.global_variables = {var['variable_name']: var['variable_value'] for var in global_vars_response.data}
+            
+            # Load accounts lookup
+            accounts_response = supabase.table('accounts_table').select('*').execute()
+            self.accounts_lookup = {acc['account_id']: acc['account_text'] for acc in accounts_response.data}
+            
+            print(f"Loaded {len(self.rr_mappings)} RR mappings, {len(self.br_mappings)} BR mappings, and {len(self.ink2_mappings)} INK2 mappings")
             
         except Exception as e:
             print(f"Error loading mappings: {e}")
             self.rr_mappings = []
             self.br_mappings = []
+            self.ink2_mappings = []
+            self.global_variables = {}
+            self.accounts_lookup = {}
     
     def parse_account_balances(self, se_content: str) -> Dict[str, float]:
         """Parse account balances from SE file content using the correct format"""
@@ -591,3 +609,187 @@ class DatabaseParser:
         except Exception as e:
             print(f"Error updating formula for row {row_id}: {e}")
             return False
+    
+    def parse_ink2_data(self, current_accounts: Dict[str, float], fiscal_year: int = None) -> List[Dict[str, Any]]:
+        """
+        Parse INK2 tax calculation data using database mappings.
+        Returns simplified structure: row_title and amount only.
+        """
+        if not self.ink2_mappings:
+            print("No INK2 mappings available")
+            return []
+        
+        results = []
+        
+        # Sort mappings by row_id to maintain order
+        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
+        
+        for mapping in sorted_mappings:
+            try:
+                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year)
+                
+                # Determine if row should be shown
+                should_show = mapping.get('always_show', False) or amount != 0
+                
+                if should_show:
+                    result = {
+                        'row_id': mapping.get('row_id'),
+                        'row_title': mapping.get('row_title', ''),
+                        'amount': amount,
+                        'variable_name': mapping.get('variable_name', ''),
+                        'show_tag': mapping.get('show_tag', False),
+                        'accounts_included': mapping.get('accounts_included', ''),
+                        'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None
+                    }
+                    results.append(result)
+                    
+            except Exception as e:
+                print(f"Error processing INK2 mapping {mapping.get('row_id', 'unknown')}: {e}")
+                continue
+        
+        return results
+    
+    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None) -> float:
+        """
+        Calculate the value for an INK2 variable using accounts and formulas.
+        """
+        # If there's a calculation formula, use it
+        if mapping.get('calculation_formula'):
+            return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year)
+        
+        # Otherwise, sum the included accounts
+        return self.sum_included_accounts(mapping.get('accounts_included', ''), accounts)
+    
+    def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None) -> float:
+        """
+        Calculate value using formula that may reference global variables.
+        """
+        formula = mapping.get('calculation_formula', '')
+        if not formula:
+            return 0.0
+        
+        try:
+            # Replace global variable references
+            formula_with_values = formula
+            for var_name, var_value in self.global_variables.items():
+                formula_with_values = formula_with_values.replace(var_name, str(var_value))
+            
+            # Replace account references (format: account_XXXX)
+            import re
+            account_pattern = r'account_(\d+)'
+            matches = re.findall(account_pattern, formula_with_values)
+            for account_id in matches:
+                account_value = accounts.get(account_id, 0)
+                formula_with_values = formula_with_values.replace(f'account_{account_id}', str(account_value))
+            
+            # Evaluate the formula safely
+            # Note: In production, consider using a safer eval alternative
+            return float(eval(formula_with_values))
+            
+        except Exception as e:
+            print(f"Error evaluating formula '{formula}': {e}")
+            return 0.0
+    
+    def sum_included_accounts(self, accounts_included: str, accounts: Dict[str, float]) -> float:
+        """
+        Sum the values of included accounts.
+        accounts_included format: "6072;6992;7632" or "6000-6999"
+        """
+        if not accounts_included:
+            return 0.0
+        
+        total = 0.0
+        
+        # Split by semicolon for multiple accounts/ranges
+        account_specs = accounts_included.split(';')
+        
+        for spec in account_specs:
+            spec = spec.strip()
+            if not spec:
+                continue
+                
+            if '-' in spec:
+                # Range format: "6000-6999"
+                try:
+                    start, end = spec.split('-')
+                    start_num = int(start.strip())
+                    end_num = int(end.strip())
+                    
+                    for account_id, balance in accounts.items():
+                        try:
+                            account_num = int(account_id)
+                            if start_num <= account_num <= end_num:
+                                total += balance
+                        except ValueError:
+                            continue
+                            
+                except ValueError:
+                    print(f"Invalid range format: {spec}")
+                    continue
+            else:
+                # Single account
+                try:
+                    account_id = spec.strip()
+                    total += accounts.get(account_id, 0.0)
+                except Exception:
+                    print(f"Invalid account format: {spec}")
+                    continue
+        
+        return total
+    
+    def _get_account_details(self, accounts_included: str, accounts: Dict[str, float]) -> List[Dict[str, Any]]:
+        """
+        Get detailed account information for popup display.
+        Returns list with account_id, account_text, and balance.
+        """
+        if not accounts_included:
+            return []
+        
+        details = []
+        
+        # Split by semicolon for multiple accounts/ranges
+        account_specs = accounts_included.split(';')
+        
+        for spec in account_specs:
+            spec = spec.strip()
+            if not spec:
+                continue
+                
+            if '-' in spec:
+                # Range format: "6000-6999"
+                try:
+                    start, end = spec.split('-')
+                    start_num = int(start.strip())
+                    end_num = int(end.strip())
+                    
+                    for account_id, balance in accounts.items():
+                        try:
+                            account_num = int(account_id)
+                            if start_num <= account_num <= end_num and balance != 0:
+                                details.append({
+                                    'account_id': account_id,
+                                    'account_text': self.accounts_lookup.get(account_num, f'Konto {account_id}'),
+                                    'balance': balance
+                                })
+                        except ValueError:
+                            continue
+                            
+                except ValueError:
+                    continue
+            else:
+                # Single account
+                try:
+                    account_id = spec.strip()
+                    balance = accounts.get(account_id, 0.0)
+                    if balance != 0:  # Only include accounts with non-zero balance
+                        details.append({
+                            'account_id': account_id,
+                            'account_text': self.accounts_lookup.get(int(account_id), f'Konto {account_id}'),
+                            'balance': balance
+                        })
+                except Exception:
+                    continue
+        
+        # Sort by account_id
+        details.sort(key=lambda x: int(x['account_id']))
+        return details
