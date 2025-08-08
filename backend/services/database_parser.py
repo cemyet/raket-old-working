@@ -621,8 +621,8 @@ class DatabaseParser:
         
         results = []
         
-        # Sort mappings by row_id to maintain order
-        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
+        # Sort mappings by variable_name to maintain order (since row_id doesn't exist)
+        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('variable_name', ''))
         
         for mapping in sorted_mappings:
             try:
@@ -633,7 +633,7 @@ class DatabaseParser:
                 
                 if should_show:
                     result = {
-                        'row_id': mapping.get('row_id'),
+                        'row_id': None,  # row_id doesn't exist in database schema
                         'row_title': mapping.get('row_title', ''),
                         'amount': amount,
                         'variable_name': mapping.get('variable_name', ''),
@@ -644,7 +644,7 @@ class DatabaseParser:
                     results.append(result)
                     
             except Exception as e:
-                print(f"Error processing INK2 mapping {mapping.get('row_id', 'unknown')}: {e}")
+                print(f"Error processing INK2 mapping {mapping.get('variable_name', 'unknown')}: {e}")
                 continue
         
         return results
