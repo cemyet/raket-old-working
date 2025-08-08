@@ -85,6 +85,19 @@ interface CompanyData {
       style?: string;
       block_group?: string;
     }>;
+    ink2_data?: Array<{
+      row_id: number;
+      row_title: string;
+      amount: number;
+      variable_name: string;
+      show_tag: boolean;
+      accounts_included: string;
+      account_details?: Array<{
+        account_id: string;
+        account_text: string;
+        balance: number;
+      }>;
+    }>;
          company_info?: {
        organization_number?: string;
        fiscal_year?: number;
@@ -141,6 +154,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
   const seFileData = companyData.seFileData;
   const rrData = seFileData?.rr_data || [];
   const brData = seFileData?.br_data || [];
+  const ink2Data = seFileData?.ink2_data || [];
   const companyInfo = seFileData?.company_info || {};
   
   // Debug logging
@@ -428,6 +442,46 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 <span>Data från uppladdad SE-fil</span>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tax Calculation Section */}
+        {currentStep >= 1 && seFileData?.ink2_data && seFileData.ink2_data.length > 0 && (
+          <div className="space-y-4 bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-foreground">🏛️ Skatteberäkning</h2>
+              <span className="text-sm text-muted-foreground">{seFileData.ink2_data.length} poster</span>
+            </div>
+            
+            {/* Column Headers */}
+            <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 1fr'}}>
+              <span>Post</span>
+              <span className="text-right">Belopp</span>
+            </div>
+
+            {/* Tax Calculation Rows */}
+            {seFileData.ink2_data.map((item, index) => (
+              <div 
+                key={index} 
+                className="grid gap-4 text-sm py-1 border-b border-yellow-100 last:border-b-0"
+                style={{gridTemplateColumns: '3fr 1fr'}}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">{item.row_title}</span>
+                  {item.show_tag && item.account_details && item.account_details.length > 0 && (
+                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded cursor-pointer hover:bg-blue-200">
+                      SHOW
+                    </span>
+                  )}
+                </div>
+                <span className="text-right font-medium">
+                  {item.amount ? new Intl.NumberFormat('sv-SE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  }).format(item.amount) : '0,00'}
+                </span>
+              </div>
+            ))}
           </div>
         )}
 

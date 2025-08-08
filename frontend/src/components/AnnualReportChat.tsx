@@ -153,21 +153,15 @@ export function AnnualReportChat() {
         setCurrentStep(0.5);
       }, 1000);
     } else {
-      // If tax needs review, show INK2 tax calculations
+      // If tax needs review - they can see calculations in the preview window
       setTimeout(() => {
-        addMessage("Här ser du skatteberäkningen som din revisor kan justera:", true, "🔧");
-        setCurrentStep(0.3); // New step for showing tax calculations
+        addMessage("Skatteberäkningen visas i förhandsvisningen till höger. Vill ni göra någon utdelning av vinsten?", true, "💰");
+        setCurrentStep(0.5); // Go directly to dividends
       }, 1000);
     }
   };
 
-  const handleTaxContinue = () => {
-    addMessage("Fortsätt till utdelning", false);
-    setTimeout(() => {
-      addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-      setCurrentStep(0.5);
-    }, 1000);
-  };
+
 
   const handleDividend = (type: string) => {
     setCompanyData(prev => ({ ...prev, dividend: type }));
@@ -567,15 +561,7 @@ export function AnnualReportChat() {
                 </div>
               )}
 
-              {currentStep === 0.3 && (
-                <div className="mt-4">
-                  <TaxCalculation 
-                    ink2Data={companyData.ink2Data || []}
-                    fiscalYear={companyData.fiscalYear}
-                    onContinue={handleTaxContinue}
-                  />
-                </div>
-              )}
+
 
               {currentStep === 0.5 && (
                 <div className="space-y-3">
