@@ -44,7 +44,7 @@ class DatabaseParser:
             
             # Load global variables
             global_vars_response = supabase.table('global_variables').select('*').execute()
-            self.global_variables = {var['variable_name']: var['variable_value'] for var in global_vars_response.data}
+            self.global_variables = {var['variable_name']: var['value'] for var in global_vars_response.data}
             
             # Load accounts lookup
             accounts_response = supabase.table('accounts_table').select('*').execute()
