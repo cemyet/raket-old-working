@@ -99,13 +99,13 @@ export function AnnualReportChat() {
     if (result > 0) {
       addMessage("Stort grattis till vinsten! 🎉 Det är fantastiskt!", true, "🎉");
       setTimeout(() => {
-        // Check if we have tax data from SE file
-        if (companyData.skattAretsResultat !== null && companyData.skattAretsResultat > 0) {
+        // Check if we have tax data from SE file (including 0)
+        if (companyData.skattAretsResultat !== null) {
           const taxAmount = Math.round(companyData.skattAretsResultat).toLocaleString('sv-SE');
           addMessage(`Den bokförda skatten är ${taxAmount} kr. Vill du godkänna den eller vill du se över de skattemässiga justeringarna?`, true, "🏛️");
           setCurrentStep(0.25); // New step for tax confirmation
         } else {
-          // No tax data, go directly to dividends
+          // No tax data found, go directly to dividends
           addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
           setCurrentStep(0.5);
         }
@@ -392,13 +392,13 @@ export function AnnualReportChat() {
           const displayAmount = sumAretsResultat ? Math.round(sumAretsResultat).toLocaleString('sv-SE') : extractedResults;
           addMessage(`Årets resultat: ${displayAmount} kr. Se fullständig rapport till höger!`, true, "💰");
           setTimeout(() => {
-            // Ask about tax first if we have tax data
-            if (skattAretsResultat !== null && skattAretsResultat > 0) {
+            // Ask about tax first if we have tax data (including 0)
+            if (skattAretsResultat !== null) {
               const taxAmount = Math.round(skattAretsResultat).toLocaleString('sv-SE');
               addMessage(`Den bokförda skatten är ${taxAmount} kr. Vill du godkänna den eller vill du se över de skattemässiga justeringarna?`, true, "🏛️");
               setCurrentStep(0.25); // New step for tax confirmation
             } else {
-              // No tax data, go directly to dividends
+              // No tax data found, go directly to dividends
               addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
               setCurrentStep(0.5);
             }
