@@ -87,8 +87,8 @@ async def upload_se_file(file: UploadFile = File(...)):
         # Pass RR data to BR parsing so calculated values from RR are available
         br_data = parser.parse_br_data(current_accounts, previous_accounts, rr_data)
         
-        # Parse INK2 data (tax calculations)
-        ink2_data = parser.parse_ink2_data(current_accounts, company_info.get('fiscal_year'))
+        # Parse INK2 data (tax calculations) - pass RR data for variable references
+        ink2_data = parser.parse_ink2_data(current_accounts, company_info.get('fiscal_year'), rr_data)
         
         # Store financial data in database
         if company_info.get('organization_number'):

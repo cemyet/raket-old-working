@@ -610,7 +610,7 @@ class DatabaseParser:
             print(f"Error updating formula for row {row_id}: {e}")
             return False
     
-    def parse_ink2_data(self, current_accounts: Dict[str, float], fiscal_year: int = None) -> List[Dict[str, Any]]:
+    def parse_ink2_data(self, current_accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Parse INK2 tax calculation data using database mappings.
         Returns simplified structure: row_title and amount only.
@@ -626,7 +626,7 @@ class DatabaseParser:
         
         for mapping in sorted_mappings:
             try:
-                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year)
+                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data)
                 
                 # Determine if row should be shown
                 should_show = mapping.get('always_show', False) or amount != 0
@@ -649,18 +649,18 @@ class DatabaseParser:
         
         return results
     
-    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None) -> float:
+    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> float:
         """
         Calculate the value for an INK2 variable using accounts and formulas.
         """
         # If there's a calculation formula, use it
         if mapping.get('calculation_formula'):
-            return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year)
+            return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year, rr_data)
         
         # Otherwise, sum the included accounts
         return self.sum_included_accounts(mapping.get('accounts_included', ''), accounts)
     
-    def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None) -> float:
+    def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> float:
         """
         Calculate value using formula that may reference global variables.
         """
@@ -674,6 +674,17 @@ class DatabaseParser:
             for var_name, var_value in self.global_variables.items():
                 formula_with_values = formula_with_values.replace(var_name, str(var_value))
             
+            # Replace RR variable references if RR data is available
+            if rr_data:
+                rr_variables = {}
+                for item in rr_data:
+                    if item.get('variable_name'):
+                        rr_variables[item['variable_name']] = item.get('current_amount', 0) or 0
+                
+                # Replace RR variable references
+                for var_name, var_value in rr_variables.items():
+                    formula_with_values = formula_with_values.replace(var_name, str(var_value))
+            
             # Replace account references (format: account_XXXX)
             import re
             account_pattern = r'account_(\d+)'
@@ -682,6 +693,10 @@ class DatabaseParser:
                 account_value = accounts.get(account_id, 0)
                 formula_with_values = formula_with_values.replace(f'account_{account_id}', str(account_value))
             
+            # Clean up formula for Python evaluation
+            # Handle common Excel-like syntax issues
+            formula_with_values = self._clean_formula_for_python(formula_with_values)
+            
             # Evaluate the formula safely
             # Note: In production, consider using a safer eval alternative
             return float(eval(formula_with_values))
@@ -689,6 +704,30 @@ class DatabaseParser:
         except Exception as e:
             print(f"Error evaluating formula '{formula}': {e}")
             return 0.0
+    
+    def _clean_formula_for_python(self, formula: str) -> str:
+        """
+        Clean up formula syntax to make it compatible with Python eval.
+        """
+        # Handle common Excel-like syntax issues
+        formula = formula.strip()
+        
+        # Replace IF statements with Python ternary operator
+        # Note: This is a simplified conversion - might need more sophisticated parsing
+        if formula.startswith('IF '):
+            # Simple IF conversion - for more complex cases, would need proper parsing
+            return '0'  # Fallback for now
+        
+        # Handle FLOOR function (convert to int())
+        if 'FLOOR(' in formula:
+            import re
+            # Replace FLOOR(value;precision) with int(value)
+            formula = re.sub(r'FLOOR\(([^;]+);[^)]+\)', r'int(\1)', formula)
+        
+        # Remove spaces around operators
+        formula = formula.replace(' * ', '*').replace(' + ', '+').replace(' - ', '-').replace(' / ', '/')
+        
+        return formula
     
     def sum_included_accounts(self, accounts_included: str, accounts: Dict[str, float]) -> float:
         """
