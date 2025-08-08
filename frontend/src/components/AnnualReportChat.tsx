@@ -30,6 +30,8 @@ interface CompanyData {
   fiscalYear?: number; // From SE file
   sumAretsResultat?: number; // From SE file RR data
   sumFrittEgetKapital?: number; // From SE file RR data
+  taxApproved: boolean; // New field for tax approval
+  skattAretsResultat: number | null; // New field for tax amount
 }
 
 const TOTAL_STEPS = 5;
@@ -75,7 +77,9 @@ export function AnnualReportChat() {
     date: new Date().toLocaleDateString("sv-SE"),
     boardMembers: [
       { name: "Anna Andersson", personalNumber: "851201-1234" }
-    ]
+    ],
+    taxApproved: false, // New field for tax approval
+    skattAretsResultat: null // New field for tax amount
   });
 
   // Debug logging - after all state declarations
@@ -95,8 +99,16 @@ export function AnnualReportChat() {
     if (result > 0) {
       addMessage("Stort grattis till vinsten! 🎉 Det är fantastiskt!", true, "🎉");
       setTimeout(() => {
-        addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-        setCurrentStep(0.5);
+        // Check if we have tax data from SE file
+        if (companyData.skattAretsResultat !== null && companyData.skattAretsResultat > 0) {
+          const taxAmount = Math.round(companyData.skattAretsResultat).toLocaleString('sv-SE');
+          addMessage(`Den bokförda skatten är ${taxAmount} kr. Vill du godkänna den eller vill du se över de skattemässiga justeringarna?`, true, "🏛️");
+          setCurrentStep(0.25); // New step for tax confirmation
+        } else {
+          // No tax data, go directly to dividends
+          addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
+          setCurrentStep(0.5);
+        }
       }, 1000);
     } else {
       addMessage("Tack för informationen. Inga utdelningar att hantera då.", true);
@@ -125,6 +137,29 @@ export function AnnualReportChat() {
     
     setShowInput(false);
     setInputValue("");
+  };
+
+  const handleTaxApproval = (approved: boolean) => {
+    setCompanyData(prev => ({ ...prev, taxApproved: approved }));
+    addMessage(approved ? "Ja, godkänn skatten" : "Nej, jag vill se över justeringarna", false);
+    
+    if (approved) {
+      // If tax is approved, continue to dividends
+      setTimeout(() => {
+        addMessage("Perfekt! Vill ni göra någon utdelning av vinsten?", true, "💰");
+        setCurrentStep(0.5);
+      }, 1000);
+    } else {
+      // If tax needs review, we'll show new functionality later
+      // For now, continue to dividends  
+      setTimeout(() => {
+        addMessage("Vi kommer snart att lägga till funktionalitet för skattemässiga justeringar. Låt oss fortsätta med utdelning.", true, "🔧");
+        setTimeout(() => {
+          addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
+          setCurrentStep(0.5);
+        }, 1000);
+      }, 1000);
+    }
   };
 
   const handleDividend = (type: string) => {
@@ -278,6 +313,7 @@ export function AnnualReportChat() {
     let extractedResults = null;
     let sumAretsResultat = null;
     let sumFrittEgetKapital = null;
+    let skattAretsResultat = null;
     
 
     
@@ -302,6 +338,14 @@ export function AnnualReportChat() {
       if (sumAretsResultatItem && sumAretsResultatItem.current_amount !== null) {
         sumAretsResultat = Math.abs(sumAretsResultatItem.current_amount);
 
+      }
+      
+      // Extract SkattAretsResultat for tax confirmation
+      const skattAretsResultatItem = data.data.rr_data.find((item: any) => 
+        item.variable_name === 'SkattAretsResultat'
+      );
+      if (skattAretsResultatItem && skattAretsResultatItem.current_amount !== null) {
+        skattAretsResultat = Math.abs(skattAretsResultatItem.current_amount);
       }
     }
     
@@ -334,6 +378,7 @@ export function AnnualReportChat() {
       results: extractedResults || prev.results,
       sumAretsResultat: sumAretsResultat,
       sumFrittEgetKapital: sumFrittEgetKapital,
+      skattAretsResultat: skattAretsResultat,
       organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
       fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
       location: data.data?.company_info?.location || prev.location,
@@ -347,8 +392,16 @@ export function AnnualReportChat() {
           const displayAmount = sumAretsResultat ? Math.round(sumAretsResultat).toLocaleString('sv-SE') : extractedResults;
           addMessage(`Årets resultat: ${displayAmount} kr. Se fullständig rapport till höger!`, true, "💰");
           setTimeout(() => {
-            addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-            setCurrentStep(0.5);
+            // Ask about tax first if we have tax data
+            if (skattAretsResultat !== null && skattAretsResultat > 0) {
+              const taxAmount = Math.round(skattAretsResultat).toLocaleString('sv-SE');
+              addMessage(`Den bokförda skatten är ${taxAmount} kr. Vill du godkänna den eller vill du se över de skattemässiga justeringarna?`, true, "🏛️");
+              setCurrentStep(0.25); // New step for tax confirmation
+            } else {
+              // No tax data, go directly to dividends
+              addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
+              setCurrentStep(0.5);
+            }
           }, 1500);
         } else {
           addMessage("Jag kunde inte hitta årets resultat automatiskt i filen. Låt mig fråga dig om det.", true, "🤖");
@@ -491,6 +544,17 @@ export function AnnualReportChat() {
                 <div className="space-y-3">
                   <OptionButton onClick={startProcess}>
                     Låt oss börja!
+                  </OptionButton>
+                </div>
+              )}
+
+              {currentStep === 0.25 && (
+                <div className="space-y-3">
+                  <OptionButton onClick={() => handleTaxApproval(true)}>
+                    Ja, godkänn skatten
+                  </OptionButton>
+                  <OptionButton onClick={() => handleTaxApproval(false)}>
+                    Nej, jag vill se över justeringarna
                   </OptionButton>
                 </div>
               )}
