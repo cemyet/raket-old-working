@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
@@ -218,7 +218,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
     // Line styles - only S2/S3/TS2/TS3 get darker lines
     const lineStyles = ['S2','S3','TS2','TS3'];
     if (lineStyles.includes(s)) {
-      additionalClasses += ' border-t border-b border-gray-400 pt-1 pb-1';
+      additionalClasses += ' border-t border-b border-gray-300 pt-1 pb-1';
     }
 
     // Indentation for TNORMAL only
@@ -514,11 +514,17 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
 
             {/* Tax Calculation Rows */}
             {seFileData.ink2_data.filter((item: any) => {
-              if (showAllINK2) return true;
-              // Hide rows with show_amount = 'NEVER'
-              if (item.show_amount === 'NEVER' || item.show_amount === false) return false;
-              // Show rows with non-zero amounts or always_show = true
-              return item.amount !== 0 || item.always_show === true || item.always_show === 'TRUE';
+              // Default view (toggle OFF): show rows that normally appear 
+              // - Non-zero amounts OR always_show = true, but NOT show_amount = NEVER
+              if (!showAllINK2) {
+                if (item.show_amount === 'NEVER') return false;
+                return item.amount !== 0 || item.always_show === true || item.always_show === 'TRUE';
+              }
+              
+              // Toggle ON: show ALL rows including hidden ones (always_show = FALSE)
+              // Only exclude show_amount = NEVER
+              if (item.show_amount === 'NEVER') return false;
+              return true;
             }).map((item, index) => (
               <div
                 key={index}
@@ -544,17 +550,15 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     )}
                   </div>
                   {item.show_tag && item.account_details && item.account_details.length > 0 && (
-                    <Dialog>
-                      <DialogTrigger asChild>
+                    <Popover>
+                      <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="ml-2 h-5 px-2 text-xs">
                           SHOW
                         </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[500px]">
-                        <DialogHeader>
-                          <DialogTitle>Detaljer för {item.row_title}</DialogTitle>
-                        </DialogHeader>
-                        <div className="py-4">
+                      </PopoverTrigger>
+                      <PopoverContent className="w-96 p-4 bg-white border shadow-lg">
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-sm">Detaljer för {item.row_title}</h4>
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
@@ -581,8 +585,8 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                             </table>
                           </div>
                         </div>
-                      </DialogContent>
-                    </Dialog>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
                  <span className="text-right font-medium">
@@ -590,7 +594,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     (editableAmounts && !item.is_calculated && item.show_amount) ? (
                       <input
                         type="number"
-                        className="w-32 px-3 py-2 text-sm border border-gray-400 rounded text-right font-medium"
+                        className="w-32 px-1 py-1 text-sm border border-gray-400 rounded text-right font-medium h-7"
                         value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
                         onChange={(e) => setEditedAmounts(prev => ({
                           ...prev,
