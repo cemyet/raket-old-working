@@ -42,20 +42,27 @@ class DatabaseParser:
             ink2_response = supabase.table('variable_mapping_ink2').select('*').execute()
             self.ink2_mappings = ink2_response.data
             
-            # Load global variables (normalize values to floats if they are strings like "20,60%")
+            # Load global variables (normalize values to floats; treat % values as decimals)
             global_vars_response = supabase.table('global_variables').select('*').execute()
             self.global_variables = {}
             for var in global_vars_response.data:
                 name = var.get('variable_name')
                 raw = var.get('value')
+                had_percent = False
+                if isinstance(raw, str) and '%' in raw:
+                    had_percent = True
                 if isinstance(raw, (int, float)):
-                    self.global_variables[name] = float(raw)
+                    value = float(raw)
                 else:
                     text = str(raw or '').strip().replace('%', '').replace(' ', '').replace(',', '.')
                     try:
-                        self.global_variables[name] = float(text)
+                        value = float(text)
                     except ValueError:
-                        self.global_variables[name] = 0.0
+                        value = 0.0
+                if had_percent or name.lower().startswith('skattesats'):
+                    # Convert percent like 20.6 to 0.206
+                    value = value / 100.0
+                self.global_variables[name] = value
             
             # Load accounts lookup (map by both int and string id for robustness)
             accounts_response = supabase.table('accounts_table').select('*').execute()
@@ -631,7 +638,7 @@ class DatabaseParser:
             print(f"Error updating formula for row {row_id}: {e}")
             return False
     
-    def parse_ink2_data(self, current_accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    def parse_ink2_data(self, current_accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, br_data: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Parse INK2 tax calculation data using database mappings.
         Returns simplified structure: row_title and amount only.
@@ -648,7 +655,7 @@ class DatabaseParser:
         ink_values: Dict[str, float] = {}
         for mapping in sorted_mappings:
             try:
-                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values)
+                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
                 # Determine if row should be shown
                 should_show = mapping.get('always_show', False) or amount != 0
@@ -675,7 +682,7 @@ class DatabaseParser:
         
         return results
     
-    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None) -> float:
+    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None, br_data: Optional[List[Dict[str, Any]]] = None) -> float:
         """
         Calculate the value for an INK2 variable using accounts and formulas.
         """
@@ -700,25 +707,77 @@ class DatabaseParser:
             return sum_arets if sum_arets < 0 else 0.0
         if variable_name == 'INK4.3a':
             return rr('SkattAretsResultat')
+        if variable_name == 'INK4.6a':
+            # Periodiseringsfonder previous_year * statslaneranta
+            rate = float(self.global_variables.get('statslaneranta', 0.0))
+            prev = 0.0
+            if br_data:
+                for item in br_data:
+                    if item.get('variable_name') == 'Periodiseringsfonder':
+                        val = item.get('previous_amount')
+                        prev = float(val) if val is not None else 0.0
+                        break
+            return prev * rate
         if variable_name == 'INK_skattemassigt_resultat':
             def v(name: str) -> float:
                 if not ink_values:
                     return 0.0
                 return float(ink_values.get(name, 0.0))
             total = (
-                + v('INK4.1') - v('INK4.2')
-                + v('INK4.3b') + v('INK4.3c')
-                - v('INK4.4a') - v('INK4.4b')
-                - v('INK4.5a') - v('INK4.5b') - v('INK4.5c')
+                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
+                + v('INK4.4a') + v('INK4.4b')
+                + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
                 + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                - v('INK4.7a') + v('INK4.7b') - v('INK4.7c') + v('INK4.7d') + v('INK4.7e') - v('INK4.7f')
-                - v('INK4.8a') + v('INK4.8b') + v('INK4.8c') - v('INK4.8d')
-                + v('INK4.9(+)') - v('INK4.9(-)')
-                + v('INK4.10(+)') - v('INK4.10(-)')
-                - v('INK4.11') + v('INK4.12') + v('INK4.13(+)') - v('INK4.13(-)')
-                - v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
+                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
+                + v('INK4.9(+)') + v('INK4.9(-)')
+                + v('INK4.10(+)') + v('INK4.10(-)')
+                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
+                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
             )
             return float(total)
+        if variable_name == 'INK4.15':
+            def v(name: str) -> float:
+                if not ink_values:
+                    return 0.0
+                return float(ink_values.get(name, 0.0))
+            total = (
+                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
+                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
+                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
+                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
+                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
+                + v('INK4.9(+)') + v('INK4.9(-)') + v('INK4.10(+)') + v('INK4.10(-)')
+                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
+                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+            )
+            return total if total > 0 else 0.0
+        if variable_name == 'INK4.16':
+            def v(name: str) -> float:
+                if not ink_values:
+                    return 0.0
+                return float(ink_values.get(name, 0.0))
+            total = (
+                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
+                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
+                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
+                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
+                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
+                + v('INK4.9(+)') + v('INK4.9(-)') + v('INK4.10(+)') + v('INK4.10(-)')
+                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
+                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+            )
+            return total if total < 0 else 0.0
+        if variable_name == 'INK_bokford_skatt':
+            return rr('SkattAretsResultat')
+        if variable_name == 'INK_beraknad_skatt':
+            base = 0.0
+            if ink_values:
+                base = float(ink_values.get('INK_skattemassigt_resultat', 0.0))
+            # round down to nearest 100
+            floored = (int(base // 100) * 100)
+            rate = float(self.global_variables.get('skattesats', 0.0))
+            return float(floored) * rate
 
         # If there's a calculation formula, use it
         if mapping.get('calculation_formula'):
