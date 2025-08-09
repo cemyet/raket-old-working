@@ -84,6 +84,19 @@ class ApiService {
   async getCompanyInfo(orgNumber: string): Promise<any> {
     return this.makeRequest(`${API_ENDPOINTS.companyInfo}/${orgNumber}`);
   }
+
+  async recalculateInk2(data: {
+    current_accounts: Record<string, number>;
+    fiscal_year?: number;
+    rr_data: any[];
+    br_data: any[];
+    manual_amounts: Record<string, number>;
+  }): Promise<{ success: boolean; ink2_data: any[] }> {
+    return this.makeRequest(API_ENDPOINTS.recalculateInk2, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export const apiService = new ApiService(); 

@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
+import { apiService } from '@/services/api';
 
 interface CompanyData {
   results?: string;
@@ -167,32 +168,25 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
     try {
       console.log('Recalculating with amounts:', updatedAmounts);
       
-      // Call backend API to recalculate INK2 values
-      const response = await fetch('https://raketrapport.se/api/recalculate-ink2', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          current_accounts: seFileData?.current_accounts || {},
-          fiscal_year: seFileData?.company_info?.fiscal_year,
-          rr_data: seFileData?.rr_data || [],
-          br_data: seFileData?.br_data || [],
-          manual_amounts: updatedAmounts
-        })
+      // Call backend API to recalculate INK2 values using API service
+      const result = await apiService.recalculateInk2({
+        current_accounts: seFileData?.current_accounts || {},
+        fiscal_year: seFileData?.company_info?.fiscal_year,
+        rr_data: seFileData?.rr_data || [],
+        br_data: seFileData?.br_data || [],
+        manual_amounts: updatedAmounts
       });
       
-      if (response.ok) {
-        const newINK2Data = await response.json();
-        
+      if (result.success) {
         // Update the seFileData with new calculated values
         if (companyData.seFileData) {
-          companyData.seFileData.ink2_data = newINK2Data.ink2_data;
+          companyData.seFileData.ink2_data = result.ink2_data;
           // Force re-render by updating the state
-          setRecalculatedData(newINK2Data.ink2_data);
+          setRecalculatedData(result.ink2_data);
         }
+        console.log('Successfully recalculated INK2 values');
       } else {
-        console.error('Failed to recalculate:', response.statusText);
+        console.error('Failed to recalculate: API returned success=false');
       }
     } catch (error) {
       console.error('Error recalculating values:', error);
