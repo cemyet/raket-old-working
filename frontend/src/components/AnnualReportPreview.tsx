@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
 
 interface CompanyData {
@@ -154,7 +155,16 @@ interface AnnualReportPreviewProps {
 export function AnnualReportPreview({ companyData, currentStep, editableAmounts = false }: AnnualReportPreviewProps) {
   const [showAllRR, setShowAllRR] = useState(false);
   const [showAllBR, setShowAllBR] = useState(false);
+  const [showAllINK2, setShowAllINK2] = useState(false);
   const [editedAmounts, setEditedAmounts] = useState<Record<string, number>>({});
+  const [recalculatedData, setRecalculatedData] = useState<any[]>([]);
+
+  // Recalculate dependent values when amounts change
+  const recalculateValues = async (updatedAmounts: Record<string, number>) => {
+    // TODO: Call backend API to recalculate with new amounts
+    // For now, just update the display data
+    console.log('Recalculating with amounts:', updatedAmounts);
+  };
   
   // Get new database-driven parser data
   const seFileData = companyData.seFileData;
@@ -205,10 +215,10 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
       additionalClasses += ' font-semibold';
     }
     
-    // Line styles - only S2/S3/TS2/TS3 get grey lines
+    // Line styles - only S2/S3/TS2/TS3 get darker lines
     const lineStyles = ['S2','S3','TS2','TS3'];
     if (lineStyles.includes(s)) {
-      additionalClasses += ' border-t border-b border-gray-200 pt-1 pb-1';
+      additionalClasses += ' border-t border-b border-gray-400 pt-1 pb-1';
     }
 
     // Indentation for TNORMAL only
@@ -486,23 +496,53 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
           <div className="space-y-4 bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200" data-section="tax-calculation">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Skatteberäkning</h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">Visa alla rader</span>
+                <Switch
+                  checked={showAllINK2}
+                  onCheckedChange={setShowAllINK2}
+                  className={`${showAllINK2 ? 'bg-green-500' : 'bg-gray-300'}`}
+                />
+              </div>
             </div>
             
             {/* Column Headers */}
             <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 1fr'}}>
-              <span>Skattemässiga justeringar</span>
+              <span></span>
               <span className="text-right">{headerData.fiscal_year}</span>
             </div>
 
             {/* Tax Calculation Rows */}
-            {seFileData.ink2_data.map((item, index) => (
+            {seFileData.ink2_data.filter((item: any) => {
+              if (showAllINK2) return true;
+              // Hide rows with show_amount = 'NEVER'
+              if (item.show_amount === 'NEVER' || item.show_amount === false) return false;
+              // Show rows with non-zero amounts or always_show = true
+              return item.amount !== 0 || item.always_show === true || item.always_show === 'TRUE';
+            }).map((item, index) => (
               <div
                 key={index}
                 className={getInkStyleClasses(item.style).className}
                 style={getInkStyleClasses(item.style).style}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{item.row_title}</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-muted-foreground">{item.row_title}</span>
+                    {item.explainer && item.explainer.trim() && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="w-4 h-4 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center hover:bg-blue-600 transition-colors">
+                              i
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-xs">{item.explainer}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                   {item.show_tag && item.account_details && item.account_details.length > 0 && (
                     <Dialog>
                       <DialogTrigger asChild>
@@ -550,12 +590,25 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     (editableAmounts && !item.is_calculated && item.show_amount) ? (
                       <input
                         type="number"
-                        className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-right"
+                        className="w-32 px-3 py-2 text-sm border border-gray-400 rounded text-right font-medium"
                         value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
                         onChange={(e) => setEditedAmounts(prev => ({
                           ...prev,
                           [item.variable_name]: parseFloat(e.target.value) || 0
                         }))}
+                        onBlur={(e) => {
+                          const newValue = parseFloat(e.target.value) || 0;
+                          const updatedAmounts = { ...editedAmounts, [item.variable_name]: newValue };
+                          recalculateValues(updatedAmounts);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const newValue = parseFloat(e.currentTarget.value) || 0;
+                            const updatedAmounts = { ...editedAmounts, [item.variable_name]: newValue };
+                            recalculateValues(updatedAmounts);
+                            e.currentTarget.blur(); // Remove focus
+                          }
+                        }}
                         step="0.01"
                       />
                     ) : (
@@ -572,13 +625,13 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
             
             {/* Update Tax Button */}
             {editableAmounts && (
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-gray-200 flex justify-center">
                 <Button 
                   onClick={() => {
                     // Handle tax update - this would typically update the chat state
                     console.log('Updated amounts:', editedAmounts);
                   }}
-                  className="w-full"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
                 >
                   Godkänn och uppdatera skatt
                 </Button>

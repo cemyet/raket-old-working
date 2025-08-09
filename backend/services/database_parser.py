@@ -693,7 +693,8 @@ class DatabaseParser:
                         'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None,
                         'show_amount': self._normalize_show_amount(mapping.get('show_amount', True)),
                         'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated', True)),
-                        'style': mapping.get('style')
+                        'style': mapping.get('style'),
+                        'explainer': mapping.get('explainer', '')
                     }
                     results.append(result)
                 # store for later formula dependencies
