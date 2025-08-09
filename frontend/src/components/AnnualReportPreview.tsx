@@ -193,7 +193,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
 
   // Same styling semantics as RR/BR but for INK2's 2-column layout
   const getInkStyleClasses = (style?: string) => {
-    const baseClasses = 'grid gap-4 text-sm py-1';
+    const baseClasses = 'grid gap-4';
     let additionalClasses = '';
 
     // Support legacy and T-styles (TH1/TH2/TH3/TS1/TS2/TS3/TNORMAL)
