@@ -806,9 +806,10 @@ class DatabaseParser:
             if base <= 0:
                 return 0.0
             # round down to nearest 100 according to Skatteverket examples
-            # e.g. 560758 -> 560700, 560799 -> 560700
-            floored = (int(base // 100) * 100)
+            # e.g. 560758 -> 560700, 560799 -> 560700, 560701 -> 560700
+            floored = int(base // 100) * 100
             rate = float(self.global_variables.get('skattesats', 0.0))
+            print(f"INK_beraknad_skatt: base={base}, floored={floored}, rate={rate}, result={floored * rate}")
             return float(floored) * rate
 
         # If there's a calculation formula, use it

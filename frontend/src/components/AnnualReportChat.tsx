@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ProgressIndicator } from "./ProgressIndicator";
 import { OptionButton } from "./OptionButton";
@@ -85,6 +85,18 @@ export function AnnualReportChat() {
     ink2Data: [] // INK2 tax calculation data
   });
 
+  // Auto-scroll to tax section when step becomes 0.3
+  useEffect(() => {
+    if (currentStep === 0.3) {
+      setTimeout(() => {
+        const taxSection = document.querySelector('[data-section="tax-calculation"]');
+        if (taxSection) {
+          taxSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, [currentStep]);
+
   // Debug logging - after all state declarations
 
 
@@ -153,15 +165,10 @@ export function AnnualReportChat() {
         setCurrentStep(0.5);
       }, 1000);
     } else {
-      // Show tax preview immediately and scroll preview to top
+      // Show tax preview immediately by setting step to 0.3
+      setCurrentStep(0.3); // Set step immediately to show tax preview
       setTimeout(() => {
         addMessage("Skatteberäkningen visas i förhandsvisningen till höger.", true, "");
-        setCurrentStep(0.3); // step for showing tax preview
-        // auto scroll preview pane to top (assumes element id 'preview-pane')
-        try {
-          const el = document.getElementById('preview-pane');
-          if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch {}
         // Then ask about dividends
         setTimeout(() => {
           addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");

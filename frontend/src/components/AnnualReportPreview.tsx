@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
 
 interface CompanyData {
@@ -478,11 +477,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
         )}
 
         {/* Tax Calculation Section */}
-        {currentStep >= 1 && seFileData?.ink2_data && seFileData.ink2_data.length > 0 && (
-          <div className="space-y-4 bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200">
+        {currentStep >= 0.3 && seFileData?.ink2_data && seFileData.ink2_data.length > 0 && (
+          <div className="space-y-4 bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200" data-section="tax-calculation">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">🏛️ Skatteberäkning</h2>
-              <span className="text-sm text-muted-foreground">{seFileData.ink2_data.length} poster</span>
+              <h2 className="text-lg font-semibold text-foreground">Skatteberäkning</h2>
             </div>
             
             {/* Column Headers */}
@@ -503,9 +501,9 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   {item.show_tag && item.account_details && item.account_details.length > 0 && (
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Badge variant="secondary" className="ml-2 cursor-pointer hover:bg-gray-200">
+                        <Button variant="outline" size="sm" className="ml-2 h-5 px-2 text-xs">
                           SHOW
-                        </Badge>
+                        </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
@@ -543,7 +541,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   )}
                 </div>
                  <span className="text-right font-medium">
-                  {item.show_amount === false ? '' : item.amount ? new Intl.NumberFormat('sv-SE', {
+                  {item.show_amount === false ? '' : (item.amount !== null && item.amount !== undefined) ? new Intl.NumberFormat('sv-SE', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   }).format(item.amount) : '0,00'}
