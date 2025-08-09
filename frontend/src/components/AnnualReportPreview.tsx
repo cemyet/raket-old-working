@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -161,7 +161,42 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
   const [showAllBR, setShowAllBR] = useState(false);
   const [showAllINK2, setShowAllINK2] = useState(false);
   const [editedAmounts, setEditedAmounts] = useState<Record<string, number>>({});
+  const [originalAmounts, setOriginalAmounts] = useState<Record<string, number>>({});
   const [recalculatedData, setRecalculatedData] = useState<any[]>([]);
+
+  // Capture original amounts when editableAmounts becomes true (for undo functionality)
+  useEffect(() => {
+    if (editableAmounts && Object.keys(originalAmounts).length === 0) {
+      const currentData = recalculatedData.length > 0 ? recalculatedData : ink2Data;
+      const amounts: Record<string, number> = {};
+      currentData.forEach((item: any) => {
+        if (!item.is_calculated && item.show_amount) {
+          amounts[item.variable_name] = item.amount || 0;
+        }
+      });
+      setOriginalAmounts(amounts);
+    }
+  }, [editableAmounts, ink2Data, recalculatedData, originalAmounts]);
+
+  // Function to validate and correct sign based on mapping
+  const validateAndCorrectSign = (value: number, item: any): number => {
+    // TODO: Get sign requirement from item.sign_requirement or similar field
+    // For now, implement basic logic for known patterns
+    const variableName = item.variable_name;
+    
+    // Items that should be negative (expenses, losses)
+    if (variableName?.includes('14') && variableName?.includes('(-)')  && value > 0) {
+      return -value; // Force negative for loss carryforward
+    }
+    
+    return value; // Keep as entered for most cases
+  };
+
+  // Undo all changes
+  const handleUndo = async () => {
+    setEditedAmounts(originalAmounts);
+    await recalculateValues(originalAmounts);
+  };
 
   // Recalculate dependent values when amounts change
   const recalculateValues = async (updatedAmounts: Record<string, number>) => {
@@ -617,6 +652,17 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                                     </td>
                                   </tr>
                                 ))}
+                                {/* Sum row */}
+                                <tr className="border-t border-gray-300 font-semibold">
+                                  <td className="py-2">Summa</td>
+                                  <td className="py-2"></td>
+                                  <td className="text-right py-2">
+                                    {new Intl.NumberFormat('sv-SE', {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2
+                                    }).format(item.account_details.reduce((sum: number, detail: any) => sum + detail.balance, 0))}
+                                  </td>
+                                </tr>
                               </tbody>
                             </table>
                           </div>
@@ -637,14 +683,18 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                           [item.variable_name]: parseFloat(e.target.value) || 0
                         }))}
                         onBlur={(e) => {
-                          const newValue = parseFloat(e.target.value) || 0;
-                          const updatedAmounts = { ...editedAmounts, [item.variable_name]: newValue };
+                          const rawValue = parseFloat(e.target.value) || 0;
+                          const correctedValue = validateAndCorrectSign(rawValue, item);
+                          const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
+                          setEditedAmounts(updatedAmounts);
                           recalculateValues(updatedAmounts);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
-                            const newValue = parseFloat(e.currentTarget.value) || 0;
-                            const updatedAmounts = { ...editedAmounts, [item.variable_name]: newValue };
+                            const rawValue = parseFloat(e.currentTarget.value) || 0;
+                            const correctedValue = validateAndCorrectSign(rawValue, item);
+                            const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
+                            setEditedAmounts(updatedAmounts);
                             recalculateValues(updatedAmounts);
                             e.currentTarget.blur(); // Remove focus
                           }
@@ -663,9 +713,22 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
               </div>
             ))}
             
-            {/* Update Tax Button */}
+            {/* Tax Action Buttons */}
             {editableAmounts && (
-              <div className="pt-4 border-t border-gray-200 flex justify-center">
+              <div className="pt-4 border-t border-gray-200 flex justify-between">
+                {/* Undo Button - Left */}
+                <Button 
+                  onClick={handleUndo}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                  </svg>
+                  Ångra ändringar
+                </Button>
+                
+                {/* Update Button - Right */}
                 <Button 
                   onClick={() => {
                     // Handle tax update - this would typically update the chat state
