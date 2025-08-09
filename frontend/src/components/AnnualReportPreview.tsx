@@ -164,6 +164,13 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
   const [originalAmounts, setOriginalAmounts] = useState<Record<string, number>>({});
   const [recalculatedData, setRecalculatedData] = useState<any[]>([]);
 
+  // Get new database-driven parser data (moved up to avoid initialization errors)
+  const seFileData = companyData.seFileData;
+  const rrData = seFileData?.rr_data || [];
+  const brData = seFileData?.br_data || [];
+  const ink2Data = seFileData?.ink2_data || [];
+  const companyInfo = seFileData?.company_info || {};
+
   // Capture original amounts when editableAmounts becomes true (for undo functionality)
   useEffect(() => {
     if (editableAmounts && Object.keys(originalAmounts).length === 0) {
@@ -227,13 +234,6 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
       console.error('Error recalculating values:', error);
     }
   };
-  
-  // Get new database-driven parser data
-  const seFileData = companyData.seFileData;
-  const rrData = seFileData?.rr_data || [];
-  const brData = seFileData?.br_data || [];
-  const ink2Data = seFileData?.ink2_data || [];
-  const companyInfo = seFileData?.company_info || {};
   
   // Debug logging
 
