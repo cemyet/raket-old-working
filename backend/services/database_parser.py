@@ -657,8 +657,14 @@ class DatabaseParser:
             try:
                 amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
-                # Determine if row should be shown
-                should_show = mapping.get('always_show', False) or amount != 0
+                # Determine if row should be shown (supports boolean or string policy)
+                policy = self._interpret_always_show(mapping.get('always_show'))
+                if policy == 'always':
+                    should_show = True
+                elif policy == 'never':
+                    should_show = False
+                else:
+                    should_show = (amount != 0)
                 
                 if should_show:
                     result = {
@@ -681,6 +687,17 @@ class DatabaseParser:
                 continue
         
         return results
+
+    def _interpret_always_show(self, value: Any) -> str:
+        """Map always_show value to 'always' | 'never' | 'auto'. Supports bool and strings."""
+        if isinstance(value, bool):
+            return 'always' if value else 'auto'
+        text = str(value or '').strip().lower()
+        if text in ('always', 'true', 'ja', 'yes'):  # always show
+            return 'always'
+        if text in ('never', 'false', 'nej', 'no'):   # never show
+            return 'never'
+        return 'auto'
     
     def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None, br_data: Optional[List[Dict[str, Any]]] = None) -> float:
         """
@@ -968,7 +985,7 @@ class DatabaseParser:
                             if start_num <= account_num <= end_num and balance != 0:
                                 details.append({
                                     'account_id': account_id,
-                                    'account_text': self.accounts_lookup.get(account_num, f'Konto {account_id}'),
+                                    'account_text': self._get_account_text(account_num),
                                     'balance': balance
                                 })
                         except ValueError:
@@ -984,7 +1001,7 @@ class DatabaseParser:
                     if balance != 0:  # Only include accounts with non-zero balance
                         details.append({
                             'account_id': account_id,
-                            'account_text': self.accounts_lookup.get(int(account_id), f'Konto {account_id}'),
+                            'account_text': self._get_account_text(account_id),
                             'balance': balance
                         })
                 except Exception:
@@ -993,3 +1010,29 @@ class DatabaseParser:
         # Sort by account_id
         details.sort(key=lambda x: int(x['account_id']))
         return details
+
+    def _get_account_text(self, account_id: Any) -> str:
+        """Return kontotext for given account id using cache and DB fallback."""
+        # Try int key
+        try:
+            acc_int = int(account_id)
+            if acc_int in self.accounts_lookup:
+                return self.accounts_lookup[acc_int]
+        except Exception:
+            acc_int = None
+        # Try string key
+        key_str = str(account_id)
+        if key_str in self.accounts_lookup:
+            return self.accounts_lookup[key_str]
+        # Fallback: query Supabase directly and update cache
+        try:
+            resp = supabase.table('accounts_table').select('account_text,account_id').eq('account_id', key_str).limit(1).execute()
+            if resp.data:
+                text = resp.data[0].get('account_text') or f'Konto {key_str}'
+                if acc_int is not None:
+                    self.accounts_lookup[acc_int] = text
+                self.accounts_lookup[key_str] = text
+                return text
+        except Exception:
+            pass
+        return f'Konto {key_str}'
