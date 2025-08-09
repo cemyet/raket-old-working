@@ -168,7 +168,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
       console.log('Recalculating with amounts:', updatedAmounts);
       
       // Call backend API to recalculate INK2 values
-      const response = await fetch('/api/recalculate-ink2', {
+      const response = await fetch('https://raketrapport.se/api/recalculate-ink2', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -551,14 +551,18 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
               if (item.show_amount === 'NEVER') return false;
               
               if (!showAllINK2) {
-                // Logic: If it's a style that looks like a header (H1, H2, H3, S1, S2, S3) OR always_show=true, show it
-                // Otherwise, only show if amount is non-zero
+                // Improved logic: Headers always show, content only if non-zero
                 const isStyleHeader = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3', 'TH1', 'TH2', 'TH3', 'TS1', 'TS2', 'TS3'].includes(item.style);
                 const isAlwaysShow = item.always_show === true || item.always_show === 'TRUE' || item.always_show === 'true';
-                const hasContent = item.amount !== null && item.amount !== 0 && item.amount !== -0;
                 
-                // Show if: (style header OR always_show) OR has content
-                return (isStyleHeader || isAlwaysShow) || hasContent;
+                // Headers (style-based or always_show) are always shown
+                if (isStyleHeader || isAlwaysShow) {
+                  return true;
+                }
+                
+                // For content rows, only show if amount is non-zero
+                const hasContent = item.amount !== null && item.amount !== 0 && item.amount !== -0;
+                return hasContent;
               }
               
               // Toggle ON: show ALL rows (including zero amounts) except NEVER
@@ -602,7 +606,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                               <thead>
                                 <tr className="border-b">
                                   <th className="text-left py-2">Konto</th>
-                                  <th className="text-left py-2">Kontotext</th>
+                                  <th className="text-left py-2"></th>
                                   <th className="text-right py-2">{seFileData?.company_info?.fiscal_year || 'Belopp'}</th>
                                 </tr>
                               </thead>

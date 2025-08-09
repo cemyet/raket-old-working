@@ -9,4 +9,5 @@ export const API_ENDPOINTS = {
   companyInfo: `${API_BASE_URL}/company-info`,
   userReports: `${API_BASE_URL}/user-reports`,
   downloadReport: `${API_BASE_URL}/download-report`,
+  recalculateInk2: `${API_BASE_URL}/api/recalculate-ink2`,
 } as const; 
