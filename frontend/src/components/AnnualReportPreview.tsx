@@ -97,6 +97,8 @@ interface CompanyData {
       accounts_included: string;
       show_amount?: boolean;
       style?: string;
+      is_calculated?: boolean;
+      explainer?: string;
       account_details?: Array<{
         account_id: string;
         account_text: string;
@@ -517,13 +519,17 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
               // Always exclude show_amount = NEVER
               if (item.show_amount === 'NEVER') return false;
               
-              // Default view (toggle OFF): show structured view with headers and non-zero amounts
-              // This means: headers (always_show = true) + rows with amounts != 0
+              // Improved logic based on RR/BR pattern
               if (!showAllINK2) {
-                return (item.always_show === true || item.always_show === 'TRUE') || item.amount !== 0;
+                // Default view: show headers (always_show = true) AND non-zero content rows
+                const isHeader = item.always_show === true || item.always_show === 'TRUE';
+                const hasContent = item.amount !== null && item.amount !== 0 && item.amount !== -0;
+                
+                // Always show headers, show content only if non-zero
+                return isHeader || hasContent;
               }
               
-              // Toggle ON: show ALL rows including those with always_show = FALSE
+              // Toggle ON: show ALL rows (including zero amounts) except NEVER
               return true;
             }).map((item, index) => (
               <div
@@ -543,7 +549,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                             </button>
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-xs">{item.explainer}</p>
+                            <p className="text-xs font-normal">{item.explainer}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
