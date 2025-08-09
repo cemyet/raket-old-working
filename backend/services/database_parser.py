@@ -42,13 +42,34 @@ class DatabaseParser:
             ink2_response = supabase.table('variable_mapping_ink2').select('*').execute()
             self.ink2_mappings = ink2_response.data
             
-            # Load global variables
+            # Load global variables (normalize values to floats if they are strings like "20,60%")
             global_vars_response = supabase.table('global_variables').select('*').execute()
-            self.global_variables = {var['variable_name']: var['value'] for var in global_vars_response.data}
+            self.global_variables = {}
+            for var in global_vars_response.data:
+                name = var.get('variable_name')
+                raw = var.get('value')
+                if isinstance(raw, (int, float)):
+                    self.global_variables[name] = float(raw)
+                else:
+                    text = str(raw or '').strip().replace('%', '').replace(' ', '').replace(',', '.')
+                    try:
+                        self.global_variables[name] = float(text)
+                    except ValueError:
+                        self.global_variables[name] = 0.0
             
-            # Load accounts lookup
+            # Load accounts lookup (map by both int and string id for robustness)
             accounts_response = supabase.table('accounts_table').select('*').execute()
-            self.accounts_lookup = {acc['account_id']: acc['account_text'] for acc in accounts_response.data}
+            self.accounts_lookup = {}
+            for acc in accounts_response.data:
+                acc_id = acc.get('account_id')
+                text = acc.get('account_text') or f"Konto {acc_id}"
+                # int key
+                try:
+                    self.accounts_lookup[int(acc_id)] = text
+                except Exception:
+                    pass
+                # string key
+                self.accounts_lookup[str(acc_id)] = text
             
             print(f"Loaded {len(self.rr_mappings)} RR mappings, {len(self.br_mappings)} BR mappings, and {len(self.ink2_mappings)} INK2 mappings")
             
@@ -624,9 +645,10 @@ class DatabaseParser:
         # Sort mappings by row_id to maintain correct order
         sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
         
+        ink_values: Dict[str, float] = {}
         for mapping in sorted_mappings:
             try:
-                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data)
+                amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values)
                 
                 # Determine if row should be shown
                 should_show = mapping.get('always_show', False) or amount != 0
@@ -642,6 +664,10 @@ class DatabaseParser:
                         'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None
                     }
                     results.append(result)
+                # store for later formula dependencies
+                var_name = mapping.get('variable_name')
+                if var_name:
+                    ink_values[var_name] = amount
                     
             except Exception as e:
                 print(f"Error processing INK2 mapping {mapping.get('variable_name', 'unknown')}: {e}")
@@ -649,18 +675,59 @@ class DatabaseParser:
         
         return results
     
-    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> float:
+    def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None) -> float:
         """
         Calculate the value for an INK2 variable using accounts and formulas.
         """
+        variable_name = mapping.get('variable_name', '')
+
+        # Helper to fetch RR variables
+        def rr(var: str) -> float:
+            if not rr_data:
+                return 0.0
+            for item in rr_data:
+                if item.get('variable_name') == var:
+                    value = item.get('current_amount')
+                    return float(value) if value is not None else 0.0
+            return 0.0
+
+        # Explicit logic for key variables
+        if variable_name == 'INK4.1':
+            sum_arets = rr('SumAretsResultat')
+            return sum_arets if sum_arets > 0 else 0.0
+        if variable_name == 'INK4.2':
+            sum_arets = rr('SumAretsResultat')
+            return sum_arets if sum_arets < 0 else 0.0
+        if variable_name == 'INK4.3a':
+            return rr('SkattAretsResultat')
+        if variable_name == 'INK_skattemassigt_resultat':
+            def v(name: str) -> float:
+                if not ink_values:
+                    return 0.0
+                return float(ink_values.get(name, 0.0))
+            total = (
+                + v('INK4.1') - v('INK4.2')
+                + v('INK4.3b') + v('INK4.3c')
+                - v('INK4.4a') - v('INK4.4b')
+                - v('INK4.5a') - v('INK4.5b') - v('INK4.5c')
+                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
+                - v('INK4.7a') + v('INK4.7b') - v('INK4.7c') + v('INK4.7d') + v('INK4.7e') - v('INK4.7f')
+                - v('INK4.8a') + v('INK4.8b') + v('INK4.8c') - v('INK4.8d')
+                + v('INK4.9(+)') - v('INK4.9(-)')
+                + v('INK4.10(+)') - v('INK4.10(-)')
+                - v('INK4.11') + v('INK4.12') + v('INK4.13(+)') - v('INK4.13(-)')
+                - v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+            )
+            return float(total)
+
         # If there's a calculation formula, use it
         if mapping.get('calculation_formula'):
-            return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year, rr_data)
+            return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year, rr_data, ink_values)
         
         # Otherwise, sum the included accounts
         return self.sum_included_accounts(mapping.get('accounts_included', ''), accounts)
     
-    def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None) -> float:
+    def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None) -> float:
         """
         Calculate value using formula that may reference global variables.
         """
