@@ -514,16 +514,16 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
 
             {/* Tax Calculation Rows */}
             {seFileData.ink2_data.filter((item: any) => {
-              // Default view (toggle OFF): show rows that normally appear 
-              // - Non-zero amounts OR always_show = true, but NOT show_amount = NEVER
+              // Always exclude show_amount = NEVER
+              if (item.show_amount === 'NEVER') return false;
+              
+              // Default view (toggle OFF): show structured view with headers and non-zero amounts
+              // This means: headers (always_show = true) + rows with amounts != 0
               if (!showAllINK2) {
-                if (item.show_amount === 'NEVER') return false;
-                return item.amount !== 0 || item.always_show === true || item.always_show === 'TRUE';
+                return (item.always_show === true || item.always_show === 'TRUE') || item.amount !== 0;
               }
               
-              // Toggle ON: show ALL rows including hidden ones (always_show = FALSE)
-              // Only exclude show_amount = NEVER
-              if (item.show_amount === 'NEVER') return false;
+              // Toggle ON: show ALL rows including those with always_show = FALSE
               return true;
             }).map((item, index) => (
               <div
