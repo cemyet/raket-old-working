@@ -621,8 +621,8 @@ class DatabaseParser:
         
         results = []
         
-        # Sort mappings by variable_name to maintain order (since row_id doesn't exist)
-        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('variable_name', ''))
+        # Sort mappings by row_id to maintain correct order
+        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
         
         for mapping in sorted_mappings:
             try:
@@ -633,7 +633,7 @@ class DatabaseParser:
                 
                 if should_show:
                     result = {
-                        'row_id': None,  # row_id doesn't exist in database schema
+                        'row_id': mapping.get('row_id'),
                         'row_title': mapping.get('row_title', ''),
                         'amount': amount,
                         'variable_name': mapping.get('variable_name', ''),
@@ -707,27 +707,62 @@ class DatabaseParser:
     
     def _clean_formula_for_python(self, formula: str) -> str:
         """
-        Clean up formula syntax to make it compatible with Python eval.
+        Interpret and convert formula logic to executable Python code.
+        This handles the actual business logic from the calculation_formula column.
         """
-        # Handle common Excel-like syntax issues
         formula = formula.strip()
+        if not formula:
+            return '0'
         
-        # Replace IF statements with Python ternary operator
-        # Note: This is a simplified conversion - might need more sophisticated parsing
-        if formula.startswith('IF '):
-            # Simple IF conversion - for more complex cases, would need proper parsing
-            return '0'  # Fallback for now
+        # Handle specific formula patterns based on your database content
         
-        # Handle FLOOR function (convert to int())
+        # Pattern 1: Simple variable references (e.g., "SumResultatForeSkatt")
+        if formula.isalnum() or ('_' in formula and formula.replace('_', '').isalnum()):
+            # This is likely a variable reference - it should already be replaced by RR variables
+            return '0'  # If we get here, the variable wasn't found
+        
+        # Pattern 2: "IF statement" logic (e.g., "if >0 = formula")
+        if formula.lower().startswith('if '):
+            # Extract the condition and formula parts
+            # Example: "if >0 = INK4.1-INK4.2+..." becomes conditional logic
+            parts = formula.split(' = ', 1)
+            if len(parts) == 2:
+                condition_part = parts[0].replace('if ', '').strip()
+                formula_part = parts[1].strip()
+                
+                # Convert condition (e.g., ">0", "<0")
+                if condition_part == '>0':
+                    return f'max(0, {self._convert_ink_formula(formula_part)})'
+                elif condition_part == '<0':
+                    return f'min(0, {self._convert_ink_formula(formula_part)})'
+            return '0'
+        
+        # Pattern 3: Direct INK formula references (e.g., "INK4.1-INK4.2+INK4.3c...")
+        if 'INK4.' in formula:
+            return self._convert_ink_formula(formula)
+        
+        # Pattern 4: FLOOR function (e.g., "FLOOR(value;precision) * rate")
         if 'FLOOR(' in formula:
             import re
-            # Replace FLOOR(value;precision) with int(value)
-            formula = re.sub(r'FLOOR\(([^;]+);[^)]+\)', r'int(\1)', formula)
+            # Replace FLOOR(value;precision) with int(value/precision)*precision
+            formula = re.sub(r'FLOOR\(([^;]+);([^)]+)\)', r'(int(\1/\2)*\2)', formula)
         
-        # Remove spaces around operators
+        # Pattern 5: Simple arithmetic with known variables
+        # Clean up operators and return as-is for eval()
         formula = formula.replace(' * ', '*').replace(' + ', '+').replace(' - ', '-').replace(' / ', '/')
         
         return formula
+    
+    def _convert_ink_formula(self, formula: str) -> str:
+        """
+        Convert INK4.x variable references to actual calculated values.
+        This is a placeholder - in practice, you'd need to either:
+        1. Pre-calculate all INK4 values in order, or
+        2. Create a dependency resolver
+        """
+        # For now, return 0 for complex INK formulas since they reference other INK variables
+        # that may not be calculated yet. This needs a more sophisticated approach.
+        return '0'
     
     def sum_included_accounts(self, accounts_included: str, accounts: Dict[str, float]) -> float:
         """

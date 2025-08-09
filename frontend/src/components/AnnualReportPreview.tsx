@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { calculateRRSums, extractKeyMetrics, formatAmount, type SEData } from '@/utils/seFileCalculations';
 
 interface CompanyData {
@@ -469,9 +472,45 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">{item.row_title}</span>
                   {item.show_tag && item.account_details && item.account_details.length > 0 && (
-                    <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded cursor-pointer hover:bg-blue-200">
-                      SHOW
-                    </span>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Badge variant="secondary" className="ml-2 cursor-pointer hover:bg-gray-200">
+                          SHOW
+                        </Badge>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Detaljer för {item.row_title}</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="border-b">
+                                  <th className="text-left py-2">Konto</th>
+                                  <th className="text-left py-2">Kontotext</th>
+                                  <th className="text-right py-2">{seFileData?.company_info?.fiscal_year || 'Belopp'}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.account_details.map((detail, detailIndex) => (
+                                  <tr key={detailIndex} className="border-b">
+                                    <td className="py-2">{detail.account_id}</td>
+                                    <td className="py-2">{detail.account_text}</td>
+                                    <td className="text-right py-2">
+                                      {new Intl.NumberFormat('sv-SE', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                      }).format(detail.balance)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
                 <span className="text-right font-medium">
