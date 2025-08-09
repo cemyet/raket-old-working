@@ -729,13 +729,21 @@ class DatabaseParser:
             try:
                 variable_name = mapping.get('variable_name', '')
                 
-                # Check if this value has been manually overridden
-                if variable_name in manual_amounts:
+                # Force recalculation of dependent summary values even if not manually edited
+                force_recalculate = variable_name in ['INK_skattemassigt_resultat', 'INK_beraknad_skatt', 'INK4.15', 'INK4.16']
+                
+                # Check if this value has been manually overridden (but only for non-calculated fields)
+                if variable_name in manual_amounts and not force_recalculate:
                     amount = manual_amounts[variable_name]
                     ink_values[variable_name] = amount  # Store for dependencies
+                    print(f"Using manual override for {variable_name}: {amount}")
                 else:
-                    # Calculate normally
+                    # Calculate normally (or force recalculate for dependent values)
                     amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
+                    # IMPORTANT: Store calculated values for later formulas
+                    ink_values[variable_name] = amount
+                    if variable_name in ['INK_skattemassigt_resultat', 'INK_beraknad_skatt']:
+                        print(f"Calculated {variable_name}: {amount} (available ink_values: {list(ink_values.keys())})")
                 
                 # Determine if row should be shown (same logic as original parse_ink2_data)
                 if variable_name == 'INK4_header':
