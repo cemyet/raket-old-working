@@ -778,7 +778,11 @@ class DatabaseParser:
                 + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
                 + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
             )
-            return float(total)
+            # Apply FLOOR(total, 100) - round down to nearest 100 per Skatteverket rules
+            # 560758 -> 560700, 560799 -> 560700, 560701 -> 560700
+            floored_total = int(total // 100) * 100
+            print(f"INK_skattemassigt_resultat: raw_total={total}, floored={floored_total}")
+            return float(floored_total)
         if variable_name == 'INK4.15':
             def v(name: str) -> float:
                 if not ink_values:
