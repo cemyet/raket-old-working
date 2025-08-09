@@ -153,11 +153,21 @@ export function AnnualReportChat() {
         setCurrentStep(0.5);
       }, 1000);
     } else {
-      // If tax needs review - they can see calculations in the preview window
+      // Show tax preview immediately and scroll preview to top
       setTimeout(() => {
-        addMessage("Skatteberäkningen visas i förhandsvisningen till höger. Vill ni göra någon utdelning av vinsten?", true, "💰");
-        setCurrentStep(0.5); // Go directly to dividends
-      }, 1000);
+        addMessage("Skatteberäkningen visas i förhandsvisningen till höger.", true, "");
+        setCurrentStep(0.3); // step for showing tax preview
+        // auto scroll preview pane to top (assumes element id 'preview-pane')
+        try {
+          const el = document.getElementById('preview-pane');
+          if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch {}
+        // Then ask about dividends
+        setTimeout(() => {
+          addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
+          setCurrentStep(0.5);
+        }, 800);
+      }, 500);
     }
   };
 

@@ -195,17 +195,24 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     const baseClasses = 'grid gap-4 text-sm py-1';
     let additionalClasses = '';
 
-    if (style === 'H0' || style === 'H1' || style === 'H2' || style === 'H3' || style === 'S1' || style === 'S2' || style === 'S3' || style === 'NORMAL') {
+    // Support legacy and T-styles (TH1/TH2/TH3/TS1/TS2/TS3/TNORMAL)
+    const s = style || '';
+    const boldStyles = ['H0','H1','H2','H3','S1','S2','S3','NORMAL','TH0','TH1','TH2','TH3','TS1','TS2','TS3','TNORMAL'];
+    if (boldStyles.includes(s)) {
       additionalClasses += ' font-semibold';
     }
-    if (style === 'S2' || style === 'S3') {
-      additionalClasses += ' border-t border-b border-yellow-200 pt-1 pb-1';
+    const lineStyles = ['S2','S3','TS2','TS3'];
+    if (lineStyles.includes(s)) {
+      additionalClasses += ' border-t border-b border-gray-200 pt-1 pb-1';
     } else {
-      additionalClasses += ' border-b border-yellow-100 last:border-b-0';
+      additionalClasses += ' border-b border-gray-200 last:border-b-0';
     }
 
+    const intentStyles = ['TNORMAL'];
+    const indentation = intentStyles.includes(s) ? ' pl-6' : '';
+
     return {
-      className: `${baseClasses}${additionalClasses}`,
+      className: `${baseClasses}${additionalClasses}${indentation}`,
       style: { gridTemplateColumns: '3fr 1fr' }
     };
   };
@@ -481,7 +488,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             {/* Column Headers */}
             <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 1fr'}}>
               <span>Post</span>
-              <span className="text-right">Belopp</span>
+              <span className="text-right">{headerData.fiscal_year}</span>
             </div>
 
             {/* Tax Calculation Rows */}
@@ -535,8 +542,8 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                     </Dialog>
                   )}
                 </div>
-                <span className="text-right font-medium">
-                  {item.amount ? new Intl.NumberFormat('sv-SE', {
+                 <span className="text-right font-medium">
+                  {item.show_amount === false ? '' : item.amount ? new Intl.NumberFormat('sv-SE', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   }).format(item.amount) : '0,00'}

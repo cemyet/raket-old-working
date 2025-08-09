@@ -664,13 +664,7 @@ class DatabaseParser:
         ink_values: Dict[str, float] = {}
         for mapping in sorted_mappings:
             try:
-                # Skip headers or non-amount rows
-                if not mapping.get('show_amount', True):
-                    # Still update dependency map with zero to preserve order
-                    var_name = mapping.get('variable_name')
-                    if var_name:
-                        ink_values[var_name] = 0.0
-                    continue
+                # Always calculate (or default to 0) so rows can be shown with blank amount if needed
                 amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
                 # Determine if row should be shown (supports boolean or string policy)
@@ -811,7 +805,8 @@ class DatabaseParser:
                 base = float(ink_values.get('INK_skattemassigt_resultat', 0.0))
             if base <= 0:
                 return 0.0
-            # round down to nearest 100
+            # round down to nearest 100 according to Skatteverket examples
+            # e.g. 560758 -> 560700, 560799 -> 560700
             floored = (int(base // 100) * 100)
             rate = float(self.global_variables.get('skattesats', 0.0))
             return float(floored) * rate
