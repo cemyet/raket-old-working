@@ -95,6 +95,8 @@ interface CompanyData {
       variable_name: string;
       show_tag: boolean;
       accounts_included: string;
+      show_amount?: boolean;
+      style?: string;
       account_details?: Array<{
         account_id: string;
         account_text: string;
@@ -185,6 +187,26 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
     return {
       className: `${baseClasses}${additionalClasses}`,
       style: { gridTemplateColumns: '4fr 0.5fr 1fr 1fr' }
+    };
+  };
+
+  // Same styling semantics as RR/BR but for INK2's 2-column layout
+  const getInkStyleClasses = (style?: string) => {
+    const baseClasses = 'grid gap-4 text-sm py-1';
+    let additionalClasses = '';
+
+    if (style === 'H0' || style === 'H1' || style === 'H2' || style === 'H3' || style === 'S1' || style === 'S2' || style === 'S3' || style === 'NORMAL') {
+      additionalClasses += ' font-semibold';
+    }
+    if (style === 'S2' || style === 'S3') {
+      additionalClasses += ' border-t border-b border-yellow-200 pt-1 pb-1';
+    } else {
+      additionalClasses += ' border-b border-yellow-100 last:border-b-0';
+    }
+
+    return {
+      className: `${baseClasses}${additionalClasses}`,
+      style: { gridTemplateColumns: '3fr 1fr' }
     };
   };
 
@@ -464,10 +486,10 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
 
             {/* Tax Calculation Rows */}
             {seFileData.ink2_data.map((item, index) => (
-              <div 
-                key={index} 
-                className="grid gap-4 text-sm py-1 border-b border-yellow-100 last:border-b-0"
-                style={{gridTemplateColumns: '3fr 1fr'}}
+              <div
+                key={index}
+                className={getInkStyleClasses(item.style).className}
+                style={getInkStyleClasses(item.style).style}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">{item.row_title}</span>

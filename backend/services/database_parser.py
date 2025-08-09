@@ -242,6 +242,15 @@ class DatabaseParser:
                     except ValueError:
                         continue
         
+        # Optional explicit sign override from mapping column (e.g., '+/-' or 'sign')
+        sign_override = mapping.get('+/-') or mapping.get('sign') or mapping.get('plus_minus')
+        if sign_override:
+            s = str(sign_override).strip()
+            if s == '+':
+                total = abs(total)
+            elif s == '-':
+                total = -abs(total)
+
         if should_reverse:
             return -total
         else:
@@ -655,6 +664,13 @@ class DatabaseParser:
         ink_values: Dict[str, float] = {}
         for mapping in sorted_mappings:
             try:
+                # Skip headers or non-amount rows
+                if not mapping.get('show_amount', True):
+                    # Still update dependency map with zero to preserve order
+                    var_name = mapping.get('variable_name')
+                    if var_name:
+                        ink_values[var_name] = 0.0
+                    continue
                 amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
                 # Determine if row should be shown (supports boolean or string policy)
@@ -674,7 +690,9 @@ class DatabaseParser:
                         'variable_name': mapping.get('variable_name', ''),
                         'show_tag': mapping.get('show_tag', False),
                         'accounts_included': mapping.get('accounts_included', ''),
-                        'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None
+                        'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None,
+                        'show_amount': mapping.get('show_amount', True),
+                        'style': mapping.get('style')
                     }
                     results.append(result)
                 # store for later formula dependencies
@@ -791,6 +809,8 @@ class DatabaseParser:
             base = 0.0
             if ink_values:
                 base = float(ink_values.get('INK_skattemassigt_resultat', 0.0))
+            if base <= 0:
+                return 0.0
             # round down to nearest 100
             floored = (int(base // 100) * 100)
             rate = float(self.global_variables.get('skattesats', 0.0))
