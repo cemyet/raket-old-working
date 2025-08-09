@@ -110,6 +110,7 @@ async def upload_se_file(file: UploadFile = File(...)):
                 "previous_accounts_count": len(previous_accounts),
                 "current_accounts_sample": dict(list(current_accounts.items())[:10]),
                 "previous_accounts_sample": dict(list(previous_accounts.items())[:10]),
+                "current_accounts": current_accounts,  # Add full accounts for recalculation
                 "rr_data": rr_data,
                 "br_data": br_data,
                 "ink2_data": ink2_data,
@@ -336,6 +337,38 @@ async def list_companies_with_data():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing companies: {str(e)}")
+
+@app.post("/api/recalculate-ink2")
+async def recalculate_ink2(data: dict):
+    """
+    Recalculate INK2 values with manual amount overrides
+    """
+    try:
+        current_accounts = data.get('current_accounts', {})
+        fiscal_year = data.get('fiscal_year')
+        rr_data = data.get('rr_data', [])
+        br_data = data.get('br_data', [])
+        manual_amounts = data.get('manual_amounts', {})
+        
+        # Initialize parser
+        parser = DatabaseParser()
+        
+        # Recalculate INK2 with manual overrides
+        ink2_data = parser.parse_ink2_data_with_overrides(
+            current_accounts, 
+            fiscal_year, 
+            rr_data, 
+            br_data, 
+            manual_amounts
+        )
+        
+        return {
+            "success": True,
+            "ink2_data": ink2_data
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fel vid omberäkning: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

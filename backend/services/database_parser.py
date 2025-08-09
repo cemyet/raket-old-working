@@ -707,6 +707,74 @@ class DatabaseParser:
                 continue
         
         return results
+    
+    def parse_ink2_data_with_overrides(self, current_accounts: Dict[str, float], fiscal_year: int = None, 
+                                       rr_data: List[Dict[str, Any]] = None, br_data: List[Dict[str, Any]] = None,
+                                       manual_amounts: Dict[str, float] = None) -> List[Dict[str, Any]]:
+        """
+        Parse INK2 tax calculation data with manual amount overrides for dynamic recalculation.
+        """
+        if not self.ink2_mappings:
+            print("No INK2 mappings available")
+            return []
+        
+        manual_amounts = manual_amounts or {}
+        results = []
+        
+        # Sort mappings by row_id to maintain correct order
+        sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
+        
+        ink_values: Dict[str, float] = {}
+        for mapping in sorted_mappings:
+            try:
+                variable_name = mapping.get('variable_name', '')
+                
+                # Check if this value has been manually overridden
+                if variable_name in manual_amounts:
+                    amount = manual_amounts[variable_name]
+                    ink_values[variable_name] = amount  # Store for dependencies
+                else:
+                    # Calculate normally
+                    amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
+                
+                # Determine if row should be shown (same logic as original parse_ink2_data)
+                if variable_name == 'INK4_header':
+                    should_show = False
+                else:
+                    policy = self._interpret_always_show(mapping.get('always_show'))
+                    if policy == 'always':
+                        should_show = True
+                    elif policy == 'never':
+                        should_show = False
+                    else:
+                        should_show = (amount != 0)
+                
+                if should_show:
+                    # Get account details for SHOW button if needed
+                    account_details = []
+                    if mapping.get('show_tag') and mapping.get('accounts_included'):
+                        account_details = self._get_account_details(mapping['accounts_included'], current_accounts)
+                    
+                    results.append({
+                        'row_id': mapping.get('row_id', 0),
+                        'row_title': mapping['row_title'],
+                        'amount': amount,
+                        'variable_name': variable_name,
+                        'show_tag': mapping.get('show_tag', False),
+                        'accounts_included': mapping.get('accounts_included', ''),
+                        'show_amount': self._normalize_show_amount(mapping.get('show_amount')),
+                        'style': mapping.get('style', 'NORMAL'),
+                        'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated')),
+                        'always_show': mapping.get('always_show', False),
+                        'explainer': mapping.get('explainer', ''),
+                        'account_details': account_details
+                    })
+                
+            except Exception as e:
+                print(f"Error processing INK2 mapping {mapping.get('variable_name', 'unknown')}: {e}")
+                continue
+        
+        return results
 
     def _interpret_always_show(self, value: Any) -> str:
         """Map always_show value to 'always' | 'never' | 'auto'. Supports bool and strings."""

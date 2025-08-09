@@ -19,6 +19,7 @@ interface CompanyData {
   date: string;
   boardMembers: Array<{ name: string; personalNumber: string }>;
   seFileData?: SEData & {
+    current_accounts?: Record<string, number>;
     annualReport?: {
       header: {
         organization_number: string;
@@ -163,9 +164,39 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
 
   // Recalculate dependent values when amounts change
   const recalculateValues = async (updatedAmounts: Record<string, number>) => {
-    // TODO: Call backend API to recalculate with new amounts
-    // For now, just update the display data
-    console.log('Recalculating with amounts:', updatedAmounts);
+    try {
+      console.log('Recalculating with amounts:', updatedAmounts);
+      
+      // Call backend API to recalculate INK2 values
+      const response = await fetch('/api/recalculate-ink2', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_accounts: seFileData?.current_accounts || {},
+          fiscal_year: seFileData?.company_info?.fiscal_year,
+          rr_data: seFileData?.rr_data || [],
+          br_data: seFileData?.br_data || [],
+          manual_amounts: updatedAmounts
+        })
+      });
+      
+      if (response.ok) {
+        const newINK2Data = await response.json();
+        
+        // Update the seFileData with new calculated values
+        if (companyData.seFileData) {
+          companyData.seFileData.ink2_data = newINK2Data.ink2_data;
+          // Force re-render by updating the state
+          setRecalculatedData(newINK2Data.ink2_data);
+        }
+      } else {
+        console.error('Failed to recalculate:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error recalculating values:', error);
+    }
   };
   
   // Get new database-driven parser data
@@ -515,18 +546,19 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
             </div>
 
             {/* Tax Calculation Rows */}
-            {seFileData.ink2_data.filter((item: any) => {
+            {(recalculatedData.length > 0 ? recalculatedData : seFileData.ink2_data).filter((item: any) => {
               // Always exclude show_amount = NEVER
               if (item.show_amount === 'NEVER') return false;
               
-              // Improved logic based on RR/BR pattern
               if (!showAllINK2) {
-                // Default view: show headers (always_show = true) AND non-zero content rows
-                const isHeader = item.always_show === true || item.always_show === 'TRUE';
+                // Logic: If it's a style that looks like a header (H1, H2, H3, S1, S2, S3) OR always_show=true, show it
+                // Otherwise, only show if amount is non-zero
+                const isStyleHeader = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3', 'TH1', 'TH2', 'TH3', 'TS1', 'TS2', 'TS3'].includes(item.style);
+                const isAlwaysShow = item.always_show === true || item.always_show === 'TRUE' || item.always_show === 'true';
                 const hasContent = item.amount !== null && item.amount !== 0 && item.amount !== -0;
                 
-                // Always show headers, show content only if non-zero
-                return isHeader || hasContent;
+                // Show if: (style header OR always_show) OR has content
+                return (isStyleHeader || isAlwaysShow) || hasContent;
               }
               
               // Toggle ON: show ALL rows (including zero amounts) except NEVER
