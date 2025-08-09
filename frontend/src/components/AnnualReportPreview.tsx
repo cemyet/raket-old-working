@@ -541,10 +541,11 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   )}
                 </div>
                  <span className="text-right font-medium">
-                  {item.show_amount === false ? '' : (item.amount !== null && item.amount !== undefined) ? new Intl.NumberFormat('sv-SE', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  }).format(item.amount) : '0,00'}
+                  {!item.show_amount ? '' : (item.amount !== null && item.amount !== undefined) ? 
+                    (item.amount === 0 || item.amount === -0 ? '0,00' : new Intl.NumberFormat('sv-SE', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(item.amount)) : '0,00'}
                 </span>
               </div>
             ))}

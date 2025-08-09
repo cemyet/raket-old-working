@@ -667,14 +667,20 @@ class DatabaseParser:
                 # Always calculate (or default to 0) so rows can be shown with blank amount if needed
                 amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
-                # Determine if row should be shown (supports boolean or string policy)
-                policy = self._interpret_always_show(mapping.get('always_show'))
-                if policy == 'always':
-                    should_show = True
-                elif policy == 'never':
+                # Determine if row should be shown
+                # Special handling: hide INK4_header (duplicate "Skatteberäkning")
+                variable_name = mapping.get('variable_name', '')
+                if variable_name == 'INK4_header':
                     should_show = False
                 else:
-                    should_show = (amount != 0)
+                    # Use always_show policy for other rows
+                    policy = self._interpret_always_show(mapping.get('always_show'))
+                    if policy == 'always':
+                        should_show = True
+                    elif policy == 'never':
+                        should_show = False
+                    else:
+                        should_show = (amount != 0)
                 
                 if should_show:
                     result = {
@@ -685,7 +691,7 @@ class DatabaseParser:
                         'show_tag': mapping.get('show_tag', False),
                         'accounts_included': mapping.get('accounts_included', ''),
                         'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None,
-                        'show_amount': mapping.get('show_amount', True),
+                        'show_amount': self._normalize_show_amount(mapping.get('show_amount', True)),
                         'style': mapping.get('style')
                     }
                     results.append(result)
@@ -710,6 +716,14 @@ class DatabaseParser:
         if text in ('never', 'false', 'nej', 'no'):   # never show
             return 'never'
         return 'auto'
+    
+    def _normalize_show_amount(self, value: Any) -> bool:
+        """Normalize show_amount to boolean. Handles string 'TRUE'/'FALSE' from database."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.upper() == 'TRUE'
+        return bool(value)
     
     def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None, br_data: Optional[List[Dict[str, Any]]] = None) -> float:
         """
