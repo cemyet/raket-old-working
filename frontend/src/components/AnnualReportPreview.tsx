@@ -146,13 +146,15 @@ interface CompanyData {
 interface AnnualReportPreviewProps {
   companyData: CompanyData;
   currentStep: number;
+  editableAmounts?: boolean;
 }
 
 // Database-driven always_show logic - no more hardcoded arrays
 
-export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPreviewProps) {
+export function AnnualReportPreview({ companyData, currentStep, editableAmounts = false }: AnnualReportPreviewProps) {
   const [showAllRR, setShowAllRR] = useState(false);
   const [showAllBR, setShowAllBR] = useState(false);
+  const [editedAmounts, setEditedAmounts] = useState<Record<string, number>>({});
   
   // Get new database-driven parser data
   const seFileData = companyData.seFileData;
@@ -196,19 +198,22 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
 
     // Support legacy and T-styles (TH1/TH2/TH3/TS1/TS2/TS3/TNORMAL)
     const s = style || '';
-    const boldStyles = ['H0','H1','H2','H3','S1','S2','S3','NORMAL','TH0','TH1','TH2','TH3','TS1','TS2','TS3','TNORMAL'];
+    
+    // Bold styles - TNORMAL should NOT be bold
+    const boldStyles = ['H0','H1','H2','H3','S1','S2','S3','TH0','TH1','TH2','TH3','TS1','TS2','TS3'];
     if (boldStyles.includes(s)) {
       additionalClasses += ' font-semibold';
     }
+    
+    // Line styles - only S2/S3/TS2/TS3 get grey lines
     const lineStyles = ['S2','S3','TS2','TS3'];
     if (lineStyles.includes(s)) {
       additionalClasses += ' border-t border-b border-gray-200 pt-1 pb-1';
-    } else {
-      additionalClasses += ' border-b border-gray-200 last:border-b-0';
     }
 
-    const intentStyles = ['TNORMAL'];
-    const indentation = intentStyles.includes(s) ? ' pl-6' : '';
+    // Indentation for TNORMAL only
+    const indentStyles = ['TNORMAL'];
+    const indentation = indentStyles.includes(s) ? ' pl-6' : '';
 
     return {
       className: `${baseClasses}${additionalClasses}${indentation}`,
@@ -485,7 +490,7 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
             
             {/* Column Headers */}
             <div className="grid gap-4 text-sm text-muted-foreground border-b pb-1 font-semibold" style={{gridTemplateColumns: '3fr 1fr'}}>
-              <span>Post</span>
+              <span>Skattemässiga justeringar</span>
               <span className="text-right">{headerData.fiscal_year}</span>
             </div>
 
@@ -541,14 +546,44 @@ export function AnnualReportPreview({ companyData, currentStep }: AnnualReportPr
                   )}
                 </div>
                  <span className="text-right font-medium">
-                  {!item.show_amount ? '' : (item.amount !== null && item.amount !== undefined) ? 
-                    (item.amount === 0 || item.amount === -0 ? '0,00' : new Intl.NumberFormat('sv-SE', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }).format(item.amount)) : '0,00'}
+                  {!item.show_amount ? '' : 
+                    (editableAmounts && !item.is_calculated && item.show_amount) ? (
+                      <input
+                        type="number"
+                        className="w-20 px-2 py-1 text-xs border border-gray-300 rounded text-right"
+                        value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
+                        onChange={(e) => setEditedAmounts(prev => ({
+                          ...prev,
+                          [item.variable_name]: parseFloat(e.target.value) || 0
+                        }))}
+                        step="0.01"
+                      />
+                    ) : (
+                      (item.amount !== null && item.amount !== undefined) ? 
+                        (item.amount === 0 || item.amount === -0 ? '0,00' : new Intl.NumberFormat('sv-SE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        }).format(item.amount)) : '0,00'
+                    )
+                  }
                 </span>
               </div>
             ))}
+            
+            {/* Update Tax Button */}
+            {editableAmounts && (
+              <div className="pt-4 border-t border-gray-200">
+                <Button 
+                  onClick={() => {
+                    // Handle tax update - this would typically update the chat state
+                    console.log('Updated amounts:', editedAmounts);
+                  }}
+                  className="w-full"
+                >
+                  Godkänn och uppdatera skatt
+                </Button>
+              </div>
+            )}
           </div>
         )}
 

@@ -34,6 +34,10 @@ interface CompanyData {
   taxApproved: boolean; // New field for tax approval
   skattAretsResultat: number | null; // New field for tax amount
   ink2Data?: any[]; // INK2 tax calculation data
+  inkBeraknadSkatt?: number | null; // Calculated tax amount
+  inkBokfordSkatt?: number | null; // Booked tax amount
+  taxChoice?: string; // Tax choice: 'calculated', 'manual', 'booked'
+  editableAmounts?: boolean; // Whether amounts are editable
 }
 
 const TOTAL_STEPS = 5;
@@ -82,7 +86,11 @@ export function AnnualReportChat() {
     ],
     taxApproved: false, // New field for tax approval
     skattAretsResultat: null, // New field for tax amount
-    ink2Data: [] // INK2 tax calculation data
+    ink2Data: [], // INK2 tax calculation data
+    inkBeraknadSkatt: null, // Calculated tax amount
+    inkBokfordSkatt: null, // Booked tax amount
+    taxChoice: '', // Tax choice
+    editableAmounts: false // Whether amounts are editable
   });
 
   // Auto-scroll to tax section when step becomes 0.3
@@ -169,12 +177,43 @@ export function AnnualReportChat() {
       setCurrentStep(0.3); // Set step immediately to show tax preview
       setTimeout(() => {
         addMessage("Skatteberäkningen visas i förhandsvisningen till höger.", true, "");
-        // Then ask about dividends
+        // Then ask the new tax choice question
         setTimeout(() => {
-          addMessage("Vill ni göra någon utdelning av vinsten?", true, "💰");
-          setCurrentStep(0.5);
+          const beraknadSkatt = companyData.inkBeraknadSkatt ? Math.round(companyData.inkBeraknadSkatt).toLocaleString('sv-SE') : '0';
+          addMessage(`Beräknad skatt efter skattemässiga justeringar är ${beraknadSkatt} kr. Vill du godkänna denna skatt eller vill du göra manuella ändringar? Eller vill du hellre att vi godkänner och använder den bokförda skatten?`, true, "⚖️");
+          setCurrentStep(0.35); // New step for tax choice
         }, 800);
       }, 500);
+    }
+  };
+
+  const handleTaxChoice = (choice: string) => {
+    setCompanyData(prev => ({ 
+      ...prev, 
+      taxChoice: choice,
+      editableAmounts: choice === 'manual'
+    }));
+    
+    if (choice === 'calculated') {
+      const amount = companyData.inkBeraknadSkatt ? Math.round(companyData.inkBeraknadSkatt).toLocaleString('sv-SE') : '0';
+      addMessage(`Godkänn och använd beräknad skatt ${amount} kr`, false);
+      setTimeout(() => {
+        addMessage("Perfekt! Vill ni göra någon utdelning av vinsten?", true, "💰");
+        setCurrentStep(0.5);
+      }, 1000);
+    } else if (choice === 'manual') {
+      addMessage("Gör manuella ändringar i skattejusteringarna", false);
+      setTimeout(() => {
+        addMessage("Du kan nu redigera beloppen i förhandsvisningen. Klicka 'Godkänn och uppdatera skatt' när du är klar.", true, "✏️");
+        // Stay on current step, amounts become editable
+      }, 1000);
+    } else if (choice === 'booked') {
+      const amount = companyData.inkBokfordSkatt ? Math.round(companyData.inkBokfordSkatt).toLocaleString('sv-SE') : '0';
+      addMessage(`Godkänn och använd bokförd skatt ${amount} kr`, false);
+      setTimeout(() => {
+        addMessage("Perfekt! Vill ni göra någon utdelning av vinsten?", true, "💰");
+        setCurrentStep(0.5);
+      }, 1000);
     }
   };
 
@@ -374,7 +413,25 @@ export function AnnualReportChat() {
       );
       if (sumFrittEgetKapitalItem && sumFrittEgetKapitalItem.current_amount !== null) {
         sumFrittEgetKapital = Math.abs(sumFrittEgetKapitalItem.current_amount);
-
+      }
+    }
+    
+    // Extract calculated tax amounts from INK2 data
+    let inkBeraknadSkatt = null;
+    let inkBokfordSkatt = null;
+    if (data.data?.ink2_data) {
+      const beraknadItem = data.data.ink2_data.find((item: any) => 
+        item.variable_name === 'INK_beraknad_skatt'
+      );
+      if (beraknadItem && beraknadItem.amount !== null) {
+        inkBeraknadSkatt = Math.abs(beraknadItem.amount);
+      }
+      
+      const bokfordItem = data.data.ink2_data.find((item: any) => 
+        item.variable_name === 'INK_bokford_skatt'
+      );
+      if (bokfordItem && bokfordItem.amount !== null) {
+        inkBokfordSkatt = Math.abs(bokfordItem.amount);
       }
     }
     
@@ -398,6 +455,8 @@ export function AnnualReportChat() {
       sumFrittEgetKapital: sumFrittEgetKapital,
       skattAretsResultat: skattAretsResultat,
       ink2Data: data.data?.ink2_data || [],
+      inkBeraknadSkatt: inkBeraknadSkatt,
+      inkBokfordSkatt: inkBokfordSkatt,
       organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
       fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
       location: data.data?.company_info?.location || prev.location,
@@ -578,6 +637,20 @@ export function AnnualReportChat() {
                 </div>
               )}
 
+              {currentStep === 0.35 && (
+                <div className="space-y-3">
+                  <OptionButton onClick={() => handleTaxChoice('calculated')}>
+                    Godkänn och använd beräknad skatt {companyData.inkBeraknadSkatt ? Math.round(companyData.inkBeraknadSkatt).toLocaleString('sv-SE') : '0'} kr
+                  </OptionButton>
+                  <OptionButton onClick={() => handleTaxChoice('manual')}>
+                    Gör manuella ändringar i skattejusteringarna
+                  </OptionButton>
+                  <OptionButton onClick={() => handleTaxChoice('booked')}>
+                    Godkänn och använd bokförd skatt {companyData.inkBokfordSkatt ? Math.round(companyData.inkBokfordSkatt).toLocaleString('sv-SE') : '0'} kr
+                  </OptionButton>
+                </div>
+              )}
+
 
 
               {currentStep === 0.5 && (
@@ -686,7 +759,7 @@ export function AnnualReportChat() {
               <p className="text-xs text-muted-foreground">Din årsredovisning uppdateras live</p>
             </div>
             <div className="p-6 h-full overflow-auto">
-              <AnnualReportPreview companyData={companyData} currentStep={currentStep} />
+              <AnnualReportPreview companyData={companyData} currentStep={currentStep} editableAmounts={companyData.editableAmounts} />
             </div>
           </div>
         </ResizablePanel>

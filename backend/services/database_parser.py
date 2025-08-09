@@ -692,6 +692,7 @@ class DatabaseParser:
                         'accounts_included': mapping.get('accounts_included', ''),
                         'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None,
                         'show_amount': self._normalize_show_amount(mapping.get('show_amount', True)),
+                        'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated', True)),
                         'style': mapping.get('style')
                     }
                     results.append(result)
@@ -719,6 +720,14 @@ class DatabaseParser:
     
     def _normalize_show_amount(self, value: Any) -> bool:
         """Normalize show_amount to boolean. Handles string 'TRUE'/'FALSE' from database."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.upper() == 'TRUE'
+        return bool(value)
+    
+    def _normalize_is_calculated(self, value: Any) -> bool:
+        """Normalize is_calculated to boolean. Handles string 'TRUE'/'FALSE' from database."""
         if isinstance(value, bool):
             return value
         if isinstance(value, str):
@@ -823,12 +832,13 @@ class DatabaseParser:
                 base = float(ink_values.get('INK_skattemassigt_resultat', 0.0))
             if base <= 0:
                 return 0.0
-            # round down to nearest 100 according to Skatteverket examples
-            # e.g. 560758 -> 560700, 560799 -> 560700, 560701 -> 560700
-            floored = int(base // 100) * 100
+            # base is already rounded down to nearest 100 in INK_skattemassigt_resultat
             rate = float(self.global_variables.get('skattesats', 0.0))
-            print(f"INK_beraknad_skatt: base={base}, floored={floored}, rate={rate}, result={floored * rate}")
-            return float(floored) * rate
+            tax_amount = base * rate
+            # Round to whole kronor: ≥50 öre up, <50 öre down
+            rounded_tax = round(tax_amount)
+            print(f"INK_beraknad_skatt: base={base}, rate={rate}, tax_amount={tax_amount}, rounded={rounded_tax}")
+            return float(rounded_tax)
 
         # If there's a calculation formula, use it
         if mapping.get('calculation_formula'):
