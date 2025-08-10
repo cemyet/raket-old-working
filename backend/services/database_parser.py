@@ -904,6 +904,24 @@ class DatabaseParser:
                 for var_name, var_value in rr_variables.items():
                     formula_with_values = formula_with_values.replace(var_name, str(var_value))
             
+            # Replace INK variable references with their calculated values
+            if ink_values:
+                for var_name, var_value in ink_values.items():
+                    if var_name in formula_with_values:
+                        # Get the sign from the mapping for this variable
+                        var_mapping = next((m for m in self.ink2_mappings if m.get('variable_name') == var_name), None)
+                        if var_mapping:
+                            sign_column = var_mapping.get('*/+/-', '+')
+                            if sign_column == '-':
+                                # Apply negative sign for subtraction
+                                formula_with_values = formula_with_values.replace(var_name, f"(-{var_value})")
+                            else:
+                                # Use positive value (+ or *)
+                                formula_with_values = formula_with_values.replace(var_name, str(var_value))
+                        else:
+                            # Fallback: use value as-is
+                            formula_with_values = formula_with_values.replace(var_name, str(var_value))
+            
             # Replace account references (format: account_XXXX)
             import re
             account_pattern = r'account_(\d+)'
