@@ -667,23 +667,13 @@ class DatabaseParser:
                 # Always calculate (or default to 0) so rows can be shown with blank amount if needed
                 amount = self.calculate_ink2_variable_value(mapping, current_accounts, fiscal_year, rr_data, ink_values, br_data)
                 
-                # Determine if row should be shown
                 # Special handling: hide INK4_header (duplicate "Skatteberäkning")
                 variable_name = mapping.get('variable_name', '')
                 if variable_name == 'INK4_header':
-                    should_show = False
-                else:
-                    # Use always_show policy for other rows
-                    policy = self._interpret_always_show(mapping.get('always_show'))
-                    if policy == 'always':
-                        should_show = True
-                    elif policy == 'never':
-                        should_show = False
-                    else:
-                        should_show = (amount != 0)
+                    continue  # Skip this row entirely
                 
-                if should_show:
-                    result = {
+                # Return all rows - let frontend handle visibility logic
+                result = {
                         'row_id': mapping.get('row_id'),
                         'row_title': mapping.get('row_title', ''),
                         'amount': amount,
@@ -698,7 +688,7 @@ class DatabaseParser:
                         'block': mapping.get('block', ''),
                         'header': mapping.get('header', False)
                     }
-                    results.append(result)
+                results.append(result)
                 # store for later formula dependencies
                 var_name = mapping.get('variable_name')
                 if var_name:
@@ -747,25 +737,17 @@ class DatabaseParser:
                     if variable_name in ['INK_skattemassigt_resultat', 'INK_beraknad_skatt']:
                         print(f"Calculated {variable_name}: {amount} (available ink_values: {list(ink_values.keys())})")
                 
-                # Determine if row should be shown (same logic as original parse_ink2_data)
+                # Special handling: hide INK4_header (duplicate "Skatteberäkning")
                 if variable_name == 'INK4_header':
-                    should_show = False
-                else:
-                    policy = self._interpret_always_show(mapping.get('always_show'))
-                    if policy == 'always':
-                        should_show = True
-                    elif policy == 'never':
-                        should_show = False
-                    else:
-                        should_show = (amount != 0)
+                    continue  # Skip this row entirely
                 
-                if should_show:
-                    # Get account details for SHOW button if needed
-                    account_details = []
-                    if mapping.get('show_tag') and mapping.get('accounts_included'):
-                        account_details = self._get_account_details(mapping['accounts_included'], current_accounts)
-                    
-                    results.append({
+                # Return all rows - let frontend handle visibility logic
+                # Get account details for SHOW button if needed
+                account_details = []
+                if mapping.get('show_tag') and mapping.get('accounts_included'):
+                    account_details = self._get_account_details(mapping['accounts_included'], current_accounts)
+                
+                results.append({
                         'row_id': mapping.get('row_id', 0),
                         'row_title': mapping['row_title'],
                         'amount': amount,
