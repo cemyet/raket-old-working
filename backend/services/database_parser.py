@@ -324,7 +324,7 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
                     'block_group': mapping.get('block_group'),
-                    'always_show': mapping.get('always_show', False)
+                    'always_show': self._normalize_always_show(mapping.get('always_show', False))
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -353,7 +353,7 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
                     'block_group': mapping.get('block_group'),
-                    'always_show': mapping.get('always_show', False)
+                    'always_show': self._normalize_always_show(mapping.get('always_show', False))
                 })
         
         # Second pass: Calculate formulas using all available data
@@ -451,7 +451,7 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
                     'block_group': mapping.get('block_group'),
-                    'always_show': mapping.get('always_show', False)
+                    'always_show': self._normalize_always_show(mapping.get('always_show', False))
                 })
             else:
                 # Data row - calculate amounts for both years
@@ -479,7 +479,7 @@ class DatabaseParser:
                     'calculation_formula': mapping['calculation_formula'],
                     'show_amount': mapping['show_amount'],
                     'block_group': mapping.get('block_group'),
-                    'always_show': mapping.get('always_show', False)
+                    'always_show': self._normalize_always_show(mapping.get('always_show', False))
                 })
         
         # Second pass: Calculate formulas using all available data
@@ -781,17 +781,7 @@ class DatabaseParser:
         
         return results
 
-    def _interpret_always_show(self, value: Any) -> str:
-        """Map always_show value to 'always' | 'never' | 'auto'. Supports bool and strings."""
-        if isinstance(value, bool):
-            return 'always' if value else 'auto'
-        text = str(value or '').strip().lower()
-        if text in ('always', 'true', 'ja', 'yes'):  # always show
-            return 'always'
-        if text in ('never', 'false', 'nej', 'no'):   # never show
-            return 'never'
-        return 'auto'
-    
+
     def _normalize_show_amount(self, value: Any) -> bool:
         """Normalize show_amount to boolean. Handles string 'TRUE'/'FALSE' from database."""
         if isinstance(value, bool):
@@ -808,19 +798,19 @@ class DatabaseParser:
             return value.upper() == 'TRUE'
         return bool(value)
     
-    def _normalize_always_show(self, value: Any) -> str:
-        """Normalize always_show to consistent string values."""
+    def _normalize_always_show(self, value: Any) -> Any:
+        """Normalize always_show to boolean or null values."""
         if isinstance(value, bool):
-            return 'true' if value else 'false'
+            return value
         if isinstance(value, str):
-            normalized = value.strip().lower()
-            if normalized in ('never', 'false', 'no'):
-                return 'never'
-            elif normalized in ('true', 'always', 'yes'):
-                return 'true'
+            normalized = value.strip().upper()
+            if normalized == 'TRUE':
+                return True
+            elif normalized == 'FALSE':
+                return False
             else:
-                return 'false'  # Default for unknown values
-        return 'false'
+                return None  # Empty/null means conditional (show if amount != 0)
+        return None  # Default to conditional
     
     def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None, br_data: Optional[List[Dict[str, Any]]] = None) -> float:
         """

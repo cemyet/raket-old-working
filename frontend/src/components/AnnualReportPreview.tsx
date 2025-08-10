@@ -100,6 +100,7 @@ interface CompanyData {
       show_amount?: boolean;
       style?: string;
       is_calculated?: boolean;
+      always_show?: boolean | null;
       explainer?: string;
       block?: string;
       header?: boolean;
@@ -582,12 +583,11 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                   // Check individual row visibility rules
                   if (item.show_amount === 'NEVER') return false;
                   
-                  // Handle always_show with consistent logic  
-                  // Backend normalizes to 'true', 'false', or 'never'
-                  if (item.always_show === 'true') return true;
-                  if (item.always_show === 'never') return false;
+                  // Handle always_show with new boolean/null logic
+                  if (item.always_show === true) return true;
+                  if (item.always_show === false) return false;
                   
-                  // Default: show only if amount is non-zero
+                  // For always_show = null, show only if amount is non-zero
                   return item.amount !== null && item.amount !== 0 && item.amount !== -0;
                 });
               };
@@ -601,24 +601,27 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     show_amount: item.show_amount,
                     amount: item.amount,
                     header: item.header,
-                    block: item.block
+                    block: item.block,
+                    interpretation: item.always_show === true ? 'ALWAYS SHOW' : 
+                                   item.always_show === false ? 'NEVER SHOW' : 
+                                   'CONDITIONAL (show if amount != 0)'
                   });
                 }
                 
                 // Always exclude show_amount = NEVER
                 if (item.show_amount === 'NEVER') return false;
                 
-                // Check always_show rules first - these override everything
-                // Backend normalizes to 'true', 'false', or 'never'
-                if (item.always_show === 'true') return true;
-                if (item.always_show === 'never') return false;
+                // Check always_show rules first - these override everything except header block logic
+                // Backend normalizes to boolean true/false or null
+                if (item.always_show === true) return true;
+                if (item.always_show === false) return false;
                 
-                // If this is a header with always_show = false, check if its block has any content to show
+                // For headers with always_show = null, check if its block has any content to show
                 if (item.header === true) {
                   return shouldShowBlockContent(item.block);
                 }
                 
-                // For non-headers with always_show = false, show only if amount is non-zero
+                // For non-headers with always_show = null, show only if amount is non-zero
                 return item.amount !== null && item.amount !== 0 && item.amount !== -0;
               });
             })().map((item, index) => (
