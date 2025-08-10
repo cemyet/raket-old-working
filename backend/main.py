@@ -13,6 +13,7 @@ import json
 from services.report_generator import ReportGenerator
 from services.supabase_service import SupabaseService
 from services.database_parser import DatabaseParser
+from services.supabase_database import db
 from models.schemas import ReportRequest, ReportResponse, CompanyData
 
 app = FastAPI(
@@ -384,6 +385,108 @@ async def recalculate_ink2(data: dict):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Fel vid omberäkning: {str(e)}")
+
+@app.get("/api/database/tables/{table_name}")
+async def read_database_table(table_name: str, columns: str = "*", order_by: str = None):
+    """
+    Read data from a database table
+    """
+    try:
+        data = db.read_table(table_name, columns=columns, order_by=order_by)
+        return {
+            "success": True,
+            "table": table_name,
+            "count": len(data),
+            "data": data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading table {table_name}: {str(e)}")
+
+@app.post("/api/database/tables/{table_name}")
+async def write_database_table(table_name: str, data: dict):
+    """
+    Insert data into a database table
+    """
+    try:
+        rows = data.get('rows', [])
+        success = db.write_table(table_name, rows)
+        return {
+            "success": success,
+            "table": table_name,
+            "inserted": len(rows) if success else 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error writing to table {table_name}: {str(e)}")
+
+@app.get("/api/database/ink2-mappings")
+async def get_ink2_mappings():
+    """
+    Get all INK2 variable mappings
+    """
+    try:
+        mappings = db.get_ink2_mappings()
+        return {
+            "success": True,
+            "count": len(mappings),
+            "data": mappings
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting INK2 mappings: {str(e)}")
+
+@app.get("/api/database/check-sarskild-loneskatt")
+async def check_sarskild_loneskatt():
+    """
+    Check if INK_sarskild_loneskatt mapping exists
+    """
+    try:
+        exists = db.check_ink_sarskild_loneskatt_exists()
+        mapping = db.get_ink_sarskild_loneskatt_mapping() if exists else None
+        return {
+            "success": True,
+            "exists": exists,
+            "mapping": mapping
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking sarskild loneskatt: {str(e)}")
+
+@app.post("/api/database/add-sarskild-loneskatt")
+async def add_sarskild_loneskatt_mapping():
+    """
+    Add INK_sarskild_loneskatt mapping if it doesn't exist
+    """
+    try:
+        # Check if it already exists
+        if db.check_ink_sarskild_loneskatt_exists():
+            return {
+                "success": True,
+                "message": "INK_sarskild_loneskatt mapping already exists",
+                "created": False
+            }
+        
+        # Add the mapping
+        success = db.add_ink2_mapping(
+            variable_name='INK_sarskild_loneskatt',
+            row_title='Justering särskild löneskatt pensionspremier',
+            accounts_included=None,
+            calculation_formula='justering_sarskild_loneskatt',
+            show_amount='TRUE',
+            is_calculated='FALSE',
+            always_show=None,  # Show only if amount != 0
+            style='NORMAL',
+            show_tag='FALSE',
+            explainer='Justering av särskild löneskatt på pensionförsäkringspremier för att korrigera eventuella skillnader mellan bokfört och beräknat belopp.',
+            block='INK4',
+            header='FALSE'
+        )
+        
+        return {
+            "success": success,
+            "message": "INK_sarskild_loneskatt mapping created" if success else "Failed to create mapping",
+            "created": success
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error adding sarskild loneskatt mapping: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

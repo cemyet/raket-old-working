@@ -862,11 +862,11 @@ class DatabaseParser:
             rate = float(self.global_variables.get('sarskild_loneskatt', 0.0))
             return pension_premier * rate
         if variable_name == 'INK_sarskild_loneskatt':
-            # This is calculated as -justering_sarskild_loneskatt
-            # Will be set by frontend when user makes adjustments
-            if ink_values and 'justering_sarskild_loneskatt' in ink_values:
-                return -float(ink_values.get('justering_sarskild_loneskatt', 0.0))
-            return 0.0
+            # Hardcoded formula: -justering_sarskild_loneskatt
+            justering = float(ink_values.get('justering_sarskild_loneskatt', 0.0)) if ink_values else 0.0
+            result = -justering
+            print(f"INK_sarskild_loneskatt: justering={justering}, result={result}")
+            return result
         
         if variable_name == 'INK_skattemassigt_resultat':
             def v(name: str) -> float:
