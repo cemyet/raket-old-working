@@ -848,13 +848,34 @@ class DatabaseParser:
                         prev = float(val) if val is not None else 0.0
                         break
             return prev * rate
+        
+        # New pension tax variables
+        if variable_name == 'pension_premier':
+            # Amount in account 7410
+            return abs(float(accounts.get('7410', 0.0)))
+        if variable_name == 'sarskild_loneskatt_pension':
+            # Amount in account 7531
+            return abs(float(accounts.get('7531', 0.0)))
+        if variable_name == 'sarskild_loneskatt_pension_calculated':
+            # pension_premier * sarskild_loneskatt (global variable)
+            pension_premier = abs(float(accounts.get('7410', 0.0)))
+            rate = float(self.global_variables.get('sarskild_loneskatt', 0.0))
+            return pension_premier * rate
+        if variable_name == 'INK_sarskild_loneskatt':
+            # This is calculated as -justering_sarskild_loneskatt
+            # Will be set by frontend when user makes adjustments
+            if ink_values and 'justering_sarskild_loneskatt' in ink_values:
+                return -float(ink_values.get('justering_sarskild_loneskatt', 0.0))
+            return 0.0
+        
         if variable_name == 'INK_skattemassigt_resultat':
             def v(name: str) -> float:
                 if not ink_values:
                     return 0.0
                 return float(ink_values.get(name, 0.0))
             
-            # Hardcoded formula: INK4.1-INK4.2+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c
+            # Hardcoded formula: INK4.1-INK4.2+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c-justering_sarskild_loneskatt
+            justering = float(ink_values.get('justering_sarskild_loneskatt', 0.0)) if ink_values else 0.0
             total = (
                 v('INK4.1') - v('INK4.2') + v('INK4.3b') + v('INK4.3c')
                 - v('INK4.4a') - v('INK4.4b') - v('INK4.5a') - v('INK4.5b') - v('INK4.5c')
@@ -865,6 +886,7 @@ class DatabaseParser:
                 + v('INK4.10(+)') - v('INK4.10(-)')
                 - v('INK4.11') + v('INK4.12') + v('INK4.13(+)') - v('INK4.13(-)')
                 - v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                - justering  # Subtract pension tax adjustment
             )
             # Apply FLOOR(total, 100) - round down to nearest 100 per Skatteverket rules
             floored_total = int(total // 100) * 100
@@ -876,7 +898,8 @@ class DatabaseParser:
                     return 0.0
                 return float(ink_values.get(name, 0.0))
             
-            # Hardcoded formula: MAX(0, INK4.1-INK4.2+INK4.3a+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c)
+            # Hardcoded formula: MAX(0, INK4.1-INK4.2+INK4.3a+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c-justering_sarskild_loneskatt)
+            justering = float(ink_values.get('justering_sarskild_loneskatt', 0.0)) if ink_values else 0.0
             total = (
                 v('INK4.1') - v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
                 - v('INK4.4a') - v('INK4.4b') - v('INK4.5a') - v('INK4.5b') - v('INK4.5c')
@@ -887,6 +910,7 @@ class DatabaseParser:
                 + v('INK4.10(+)') - v('INK4.10(-)')
                 - v('INK4.11') + v('INK4.12') + v('INK4.13(+)') - v('INK4.13(-)')
                 - v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                - justering  # Subtract pension tax adjustment
             )
             # MAX(0, total) - show only if positive
             return float(max(0, round(total)))
@@ -896,7 +920,8 @@ class DatabaseParser:
                     return 0.0
                 return float(ink_values.get(name, 0.0))
             
-            # Hardcoded formula: IF(INK4.1-INK4.2+INK4.3a+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c < 0, sum, 0)
+            # Hardcoded formula: IF(INK4.1-INK4.2+INK4.3a+INK4.3b+INK4.3c-INK4.4a-INK4.4b-INK4.5a-INK4.5b-INK4.5c+INK4.6a+INK4.6b+INK4.6c+INK4.6d+INK4.6e-INK4.7a+INK4.7b-INK4.7c+INK4.7d+INK4.7e-INK4.7f-INK4.8a+INK4.8b+INK4.8c-INK4.8d+INK4.9(+)-INK4.9(-)+INK4.10(+)-INK4.10(-)-INK4.11+INK4.12+INK4.13(+)-INK4.13(-)-INK4.14a+INK4.14b+INK4.14c-justering_sarskild_loneskatt < 0, sum, 0)
+            justering = float(ink_values.get('justering_sarskild_loneskatt', 0.0)) if ink_values else 0.0
             total = (
                 v('INK4.1') - v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
                 - v('INK4.4a') - v('INK4.4b') - v('INK4.5a') - v('INK4.5b') - v('INK4.5c')
@@ -907,6 +932,7 @@ class DatabaseParser:
                 + v('INK4.10(+)') - v('INK4.10(-)')
                 - v('INK4.11') + v('INK4.12') + v('INK4.13(+)') - v('INK4.13(-)')
                 - v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                - justering  # Subtract pension tax adjustment
             )
             # IF(total < 0, abs(total), 0) - show absolute value if negative, otherwise 0
             return float(abs(total) if total < 0 else 0)

@@ -90,6 +90,13 @@ async def upload_se_file(file: UploadFile = File(...)):
         # Parse INK2 data (tax calculations) - pass RR data for variable references
         ink2_data = parser.parse_ink2_data(current_accounts, company_info.get('fiscal_year'), rr_data)
         
+        # Calculate pension tax variables for frontend
+        pension_premier = abs(float(current_accounts.get('7410', 0.0)))
+        sarskild_loneskatt_pension = abs(float(current_accounts.get('7531', 0.0)))
+        # Get sarskild_loneskatt rate from global variables
+        sarskild_loneskatt_rate = float(parser.global_variables.get('sarskild_loneskatt', 0.0))
+        sarskild_loneskatt_pension_calculated = pension_premier * sarskild_loneskatt_rate
+        
         # Store financial data in database
         if company_info.get('organization_number'):
             company_id = company_info['organization_number']
@@ -116,7 +123,10 @@ async def upload_se_file(file: UploadFile = File(...)):
                 "ink2_data": ink2_data,
                 "rr_count": len(rr_data),
                 "br_count": len(br_data),
-                "ink2_count": len(ink2_data)
+                "ink2_count": len(ink2_data),
+                "pension_premier": pension_premier,
+                "sarskild_loneskatt_pension": sarskild_loneskatt_pension,
+                "sarskild_loneskatt_pension_calculated": sarskild_loneskatt_pension_calculated
             },
             "message": "SE-fil laddad framgångsrikt"
         }
@@ -349,9 +359,14 @@ async def recalculate_ink2(data: dict):
         rr_data = data.get('rr_data', [])
         br_data = data.get('br_data', [])
         manual_amounts = data.get('manual_amounts', {})
+        justering_sarskild_loneskatt = data.get('justering_sarskild_loneskatt', 0)
         
         # Initialize parser
         parser = DatabaseParser()
+        
+        # Add pension tax adjustment to manual amounts if provided
+        if justering_sarskild_loneskatt != 0:
+            manual_amounts['justering_sarskild_loneskatt'] = justering_sarskild_loneskatt
         
         # Recalculate INK2 with manual overrides
         ink2_data = parser.parse_ink2_data_with_overrides(

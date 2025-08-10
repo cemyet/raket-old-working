@@ -38,6 +38,12 @@ interface CompanyData {
   inkBokfordSkatt?: number | null; // Booked tax amount
   taxChoice?: string; // Tax choice: 'calculated', 'manual', 'booked'
   editableAmounts?: boolean; // Whether amounts are editable
+  // Pension tax variables
+  pensionPremier?: number | null;
+  sarskildLoneskattPension?: number | null;
+  sarskildLoneskattPensionCalculated?: number | null;
+  justeringSarskildLoneskatt?: number | null;
+  sarskildLoneskattPensionSubmitted?: number | null;
 }
 
 const TOTAL_STEPS = 5;
@@ -90,7 +96,13 @@ export function AnnualReportChat() {
     inkBeraknadSkatt: null, // Calculated tax amount
     inkBokfordSkatt: null, // Booked tax amount
     taxChoice: '', // Tax choice
-    editableAmounts: false // Whether amounts are editable
+    editableAmounts: false, // Whether amounts are editable
+    // Pension tax variables
+    pensionPremier: null,
+    sarskildLoneskattPension: null,
+    sarskildLoneskattPensionCalculated: null,
+    justeringSarskildLoneskatt: null,
+    sarskildLoneskattPensionSubmitted: null
   });
 
   // Auto-scroll to tax section when step becomes 0.3
@@ -177,14 +189,113 @@ export function AnnualReportChat() {
       setCurrentStep(0.3); // Set step immediately to show tax preview
       setTimeout(() => {
         addMessage("Skatteberäkningen visas i förhandsvisningen till höger.", true, "");
-        // Then ask the new tax choice question
+        // First show the calculated tax amount
         setTimeout(() => {
           const beraknadSkatt = companyData.inkBeraknadSkatt ? Math.round(companyData.inkBeraknadSkatt).toLocaleString('sv-SE') : '0';
-          addMessage(`Beräknad skatt efter skattemässiga justeringar är ${beraknadSkatt} kr. Vill du godkänna denna skatt eller vill du göra manuella ändringar? Eller vill du hellre att vi godkänner och använder den bokförda skatten?`, true, "⚖️");
-          setCurrentStep(0.35); // New step for tax choice
+          addMessage(`Beräknad skatt efter skattemässiga justeringar är ${beraknadSkatt} kr.`, true, "⚖️");
+          
+          // Then check pension tax condition
+          setTimeout(() => {
+            checkPensionTax();
+          }, 800);
         }, 800);
       }, 500);
     }
+  };
+
+  const checkPensionTax = () => {
+    const pensionPremier = companyData.pensionPremier || 0;
+    const sarskildLoneskattPension = companyData.sarskildLoneskattPension || 0;
+    const sarskildLoneskattPensionCalculated = companyData.sarskildLoneskattPensionCalculated || 0;
+    
+    // Check if calculated > booked (meaning there's a discrepancy)
+    if (sarskildLoneskattPensionCalculated > sarskildLoneskattPension) {
+      // Show pension tax discrepancy message
+      setTimeout(() => {
+        const pensionPremierFormatted = Math.round(pensionPremier).toLocaleString('sv-SE');
+        const calculatedFormatted = Math.round(sarskildLoneskattPensionCalculated).toLocaleString('sv-SE');
+        const bookedFormatted = Math.round(sarskildLoneskattPension).toLocaleString('sv-SE');
+        
+        addMessage(`Innan vi fortsätter med skatteuträkningen vill jag göra dig uppmärksam på att särskild löneskatt på pensionförsäkringspremier inte verkar vara bokförd. Inbetalda pensionförsäkringspremier under året uppgår till ${pensionPremierFormatted} kr och den särskilda löneskatten borde uppgå till ${calculatedFormatted} kr men endast ${bookedFormatted} kr verkar vara bokfört. Vill du att vi justerar den särskilda löneskatten och därmed årets resultat enligt våra beräkningar?`, true, "⚠️");
+        setCurrentStep(0.32); // New step for pension tax options
+      }, 1000);
+    } else {
+      // No discrepancy, go directly to final tax question
+      askFinalTaxQuestion();
+    }
+  };
+
+  const askFinalTaxQuestion = () => {
+    setTimeout(() => {
+      const beraknadSkatt = companyData.inkBeraknadSkatt ? Math.round(companyData.inkBeraknadSkatt).toLocaleString('sv-SE') : '0';
+      addMessage(`Beräknad skatt efter skattemässiga justeringar är ${beraknadSkatt} kr. Vill du godkänna denna skatt eller vill du göra manuella ändringar? Eller vill du hellre att vi godkänner och använder den bokförda skatten?`, true, "⚖️");
+      setCurrentStep(0.35); // Step for tax choice
+    }, 1000);
+  };
+
+  const handlePensionTaxChoice = (choice: string) => {
+    const pensionPremier = companyData.pensionPremier || 0;
+    const sarskildLoneskattPension = companyData.sarskildLoneskattPension || 0;
+    const sarskildLoneskattPensionCalculated = companyData.sarskildLoneskattPensionCalculated || 0;
+    
+    if (choice === 'adjust') {
+      // Option 1: Adjust to calculated amount
+      const adjustment = sarskildLoneskattPensionCalculated - sarskildLoneskattPension;
+      addMessage(`Justera särskild löneskatt till ${Math.round(sarskildLoneskattPensionCalculated).toLocaleString('sv-SE')} kr`, false);
+      
+      setCompanyData(prev => ({
+        ...prev,
+        justeringSarskildLoneskatt: adjustment
+      }));
+      
+      setTimeout(() => {
+        addMessage("Perfekt, nu är den särskilda löneskatten justerad som du kan se i skatteuträkning till höger.", true, "✅");
+        setTimeout(() => {
+          askFinalTaxQuestion();
+        }, 1000);
+      }, 1000);
+      
+    } else if (choice === 'keep') {
+      // Option 2: Keep current booked amount
+      addMessage(`Behåll nuvarande bokförd särskild löneskatt ${Math.round(sarskildLoneskattPension).toLocaleString('sv-SE')} kr`, false);
+      setTimeout(() => {
+        askFinalTaxQuestion();
+      }, 1000);
+      
+    } else if (choice === 'custom') {
+      // Option 3: Enter custom amount
+      addMessage("Ange belopp för eget särskild löneskatt", false);
+      setTimeout(() => {
+        addMessage("Vänligen ange önskat belopp för särskild löneskatt på pensionförsäkringspremier:", true, "💰");
+        setCurrentStep(0.33); // Step for custom pension tax input
+        setShowInput(true);
+        setInputValue("");
+      }, 1000);
+    }
+  };
+
+  const handleCustomPensionTaxSubmit = () => {
+    const amount = parseFloat(inputValue) || 0;
+    const sarskildLoneskattPension = companyData.sarskildLoneskattPension || 0;
+    const adjustment = amount - sarskildLoneskattPension;
+    
+    addMessage(`${amount.toLocaleString('sv-SE')} kr`, false);
+    
+    setCompanyData(prev => ({
+      ...prev,
+      sarskildLoneskattPensionSubmitted: amount,
+      justeringSarskildLoneskatt: adjustment
+    }));
+    
+    setTimeout(() => {
+      addMessage("Perfekt, nu är den särskilda löneskatten justerad som du kan se i skatteuträkning till höger.", true, "✅");
+      setTimeout(() => {
+        askFinalTaxQuestion();
+      }, 1000);
+    }, 1000);
+    
+    setShowInput(false);
+    setInputValue("");
   };
 
   const handleTaxChoice = (choice: string) => {
@@ -435,6 +546,11 @@ export function AnnualReportChat() {
       }
     }
     
+    // Extract pension tax variables from response
+    let pensionPremier = data.data?.pension_premier || null;
+    let sarskildLoneskattPension = data.data?.sarskild_loneskatt_pension || null;
+    let sarskildLoneskattPensionCalculated = data.data?.sarskild_loneskatt_pension_calculated || null;
+    
     // Fallback to legacy extraction if needed
     if (!extractedResults && data.data?.accountBalances) {
       const resultAccounts = ['8999', '8910'];
@@ -457,6 +573,9 @@ export function AnnualReportChat() {
       ink2Data: data.data?.ink2_data || [],
       inkBeraknadSkatt: inkBeraknadSkatt,
       inkBokfordSkatt: inkBokfordSkatt,
+      pensionPremier: pensionPremier,
+      sarskildLoneskattPension: sarskildLoneskattPension,
+      sarskildLoneskattPensionCalculated: sarskildLoneskattPensionCalculated,
       organizationNumber: data.data?.company_info?.organization_number || data.data?.organization_number || prev.organizationNumber,
       fiscalYear: data.data?.company_info?.fiscal_year || data.data?.fiscal_year || prev.fiscalYear,
       location: data.data?.company_info?.location || prev.location,
@@ -585,7 +704,7 @@ export function AnnualReportChat() {
                     />
                   )}
                   <Button
-                    onClick={currentStep < 1 ? handleResultInput : currentStep === 0.5 ? handleCustomDividendInput : handleEventsText}
+                    onClick={currentStep < 1 ? handleResultInput : currentStep === 0.33 ? handleCustomPensionTaxSubmit : currentStep === 0.5 ? handleCustomDividendInput : handleEventsText}
                     className="w-7 h-7 rounded-full bg-foreground hover:bg-foreground/90 p-0 flex-shrink-0"
                   >
                     <svg
@@ -651,7 +770,20 @@ export function AnnualReportChat() {
                 </div>
               )}
 
-
+              {/* Pension tax check options - Step 0.32 */}
+              {currentStep === 0.32 && (
+                <div className="space-y-3">
+                  <OptionButton onClick={() => handlePensionTaxChoice('adjust')}>
+                    Justera särskild löneskatt till {companyData.sarskildLoneskattPensionCalculated ? Math.round(companyData.sarskildLoneskattPensionCalculated).toLocaleString('sv-SE') : '0'} kr
+                  </OptionButton>
+                  <OptionButton onClick={() => handlePensionTaxChoice('keep')}>
+                    Behåll nuvarande bokförd särskild löneskatt {companyData.sarskildLoneskattPension ? Math.round(companyData.sarskildLoneskattPension).toLocaleString('sv-SE') : '0'} kr
+                  </OptionButton>
+                  <OptionButton onClick={() => handlePensionTaxChoice('custom')}>
+                    Ange belopp för eget särskild löneskatt
+                  </OptionButton>
+                </div>
+              )}
 
               {currentStep === 0.5 && (
                 <div className="space-y-3">
