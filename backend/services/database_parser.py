@@ -42,6 +42,12 @@ class DatabaseParser:
             ink2_response = supabase.table('variable_mapping_ink2').select('*').execute()
             self.ink2_mappings = ink2_response.data
             
+            # Debug logging for specific problematic variables
+            for mapping in self.ink2_mappings:
+                var_name = mapping.get('variable_name', '')
+                if var_name in ['INK4.15', 'INK4.16', 'INK_bokford_skatt']:
+                    print(f"DEBUG BACKEND MAPPING {var_name}: always_show={mapping.get('always_show')} (type: {type(mapping.get('always_show'))})")
+            
             # Load global variables (normalize values to floats; treat % values as decimals)
             global_vars_response = supabase.table('global_variables').select('*').execute()
             self.global_variables = {}
