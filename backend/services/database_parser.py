@@ -849,58 +849,88 @@ class DatabaseParser:
                         break
             return prev * rate
         if variable_name == 'INK_skattemassigt_resultat':
-            def v(name: str) -> float:
+            def v_with_sign(name: str) -> float:
                 if not ink_values:
                     return 0.0
-                return float(ink_values.get(name, 0.0))
+                base_value = float(ink_values.get(name, 0.0))
+                # Get the sign from the mapping for this variable
+                var_mapping = next((m for m in self.ink2_mappings if m.get('variable_name') == name), None)
+                if var_mapping:
+                    sign_column = var_mapping.get('*/+/-', '+')
+                    if sign_column == '-':
+                        return -base_value  # Apply negative sign
+                    else:
+                        return base_value   # Use positive value
+                return base_value
+            
             total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)')
-                + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                v_with_sign('INK4.1') + v_with_sign('INK4.2') + v_with_sign('INK4.3a') + v_with_sign('INK4.3b') + v_with_sign('INK4.3c')
+                + v_with_sign('INK4.4a') + v_with_sign('INK4.4b') + v_with_sign('INK4.5a') + v_with_sign('INK4.5b') + v_with_sign('INK4.5c')
+                + v_with_sign('INK4.6a') + v_with_sign('INK4.6b') + v_with_sign('INK4.6c') + v_with_sign('INK4.6d') + v_with_sign('INK4.6e')
+                + v_with_sign('INK4.7a') + v_with_sign('INK4.7b') + v_with_sign('INK4.7c') + v_with_sign('INK4.7d') + v_with_sign('INK4.7e') + v_with_sign('INK4.7f')
+                + v_with_sign('INK4.8a') + v_with_sign('INK4.8b') + v_with_sign('INK4.8c') + v_with_sign('INK4.8d')
+                + v_with_sign('INK4.9(+)') + v_with_sign('INK4.9(-)')
+                + v_with_sign('INK4.10(+)') + v_with_sign('INK4.10(-)')
+                + v_with_sign('INK4.11') + v_with_sign('INK4.12') + v_with_sign('INK4.13(+)') + v_with_sign('INK4.13(-)')
+                + v_with_sign('INK4.14a') + v_with_sign('INK4.14b') + v_with_sign('INK4.14c')
             )
             # Apply FLOOR(total, 100) - round down to nearest 100 per Skatteverket rules
             floored_total = int(total // 100) * 100
             print(f"INK_skattemassigt_resultat: raw_total={total}, floored={floored_total}")
             return float(floored_total)
         if variable_name == 'INK4.15':
-            def v(name: str) -> float:
+            def v_with_sign(name: str) -> float:
                 if not ink_values:
                     return 0.0
-                return float(ink_values.get(name, 0.0))
+                base_value = float(ink_values.get(name, 0.0))
+                # Get the sign from the mapping for this variable
+                var_mapping = next((m for m in self.ink2_mappings if m.get('variable_name') == name), None)
+                if var_mapping:
+                    sign_column = var_mapping.get('*/+/-', '+')
+                    if sign_column == '-':
+                        return -base_value  # Apply negative sign
+                    else:
+                        return base_value   # Use positive value
+                return base_value
+            
             total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)')
-                + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                v_with_sign('INK4.1') + v_with_sign('INK4.2') + v_with_sign('INK4.3a') + v_with_sign('INK4.3b') + v_with_sign('INK4.3c')
+                + v_with_sign('INK4.4a') + v_with_sign('INK4.4b') + v_with_sign('INK4.5a') + v_with_sign('INK4.5b') + v_with_sign('INK4.5c')
+                + v_with_sign('INK4.6a') + v_with_sign('INK4.6b') + v_with_sign('INK4.6c') + v_with_sign('INK4.6d') + v_with_sign('INK4.6e')
+                + v_with_sign('INK4.7a') + v_with_sign('INK4.7b') + v_with_sign('INK4.7c') + v_with_sign('INK4.7d') + v_with_sign('INK4.7e') + v_with_sign('INK4.7f')
+                + v_with_sign('INK4.8a') + v_with_sign('INK4.8b') + v_with_sign('INK4.8c') + v_with_sign('INK4.8d')
+                + v_with_sign('INK4.9(+)') + v_with_sign('INK4.9(-)')
+                + v_with_sign('INK4.10(+)') + v_with_sign('INK4.10(-)')
+                + v_with_sign('INK4.11') + v_with_sign('INK4.12') + v_with_sign('INK4.13(+)') + v_with_sign('INK4.13(-)')
+                + v_with_sign('INK4.14a') + v_with_sign('INK4.14b') + v_with_sign('INK4.14c')
             )
             # MAX(0, total) - show only if positive
             return float(max(0, round(total)))
         if variable_name == 'INK4.16':
-            def v(name: str) -> float:
+            def v_with_sign(name: str) -> float:
                 if not ink_values:
                     return 0.0
-                return float(ink_values.get(name, 0.0))
+                base_value = float(ink_values.get(name, 0.0))
+                # Get the sign from the mapping for this variable
+                var_mapping = next((m for m in self.ink2_mappings if m.get('variable_name') == name), None)
+                if var_mapping:
+                    sign_column = var_mapping.get('*/+/-', '+')
+                    if sign_column == '-':
+                        return -base_value  # Apply negative sign
+                    else:
+                        return base_value   # Use positive value
+                return base_value
+            
             total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)')
-                + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
+                v_with_sign('INK4.1') + v_with_sign('INK4.2') + v_with_sign('INK4.3a') + v_with_sign('INK4.3b') + v_with_sign('INK4.3c')
+                + v_with_sign('INK4.4a') + v_with_sign('INK4.4b') + v_with_sign('INK4.5a') + v_with_sign('INK4.5b') + v_with_sign('INK4.5c')
+                + v_with_sign('INK4.6a') + v_with_sign('INK4.6b') + v_with_sign('INK4.6c') + v_with_sign('INK4.6d') + v_with_sign('INK4.6e')
+                + v_with_sign('INK4.7a') + v_with_sign('INK4.7b') + v_with_sign('INK4.7c') + v_with_sign('INK4.7d') + v_with_sign('INK4.7e') + v_with_sign('INK4.7f')
+                + v_with_sign('INK4.8a') + v_with_sign('INK4.8b') + v_with_sign('INK4.8c') + v_with_sign('INK4.8d')
+                + v_with_sign('INK4.9(+)') + v_with_sign('INK4.9(-)')
+                + v_with_sign('INK4.10(+)') + v_with_sign('INK4.10(-)')
+                + v_with_sign('INK4.11') + v_with_sign('INK4.12') + v_with_sign('INK4.13(+)') + v_with_sign('INK4.13(-)')
+                + v_with_sign('INK4.14a') + v_with_sign('INK4.14b') + v_with_sign('INK4.14c')
             )
             # IF(total < 0, total, 0) - show negative sum if < 0, otherwise 0
             return float(total if total < 0 else 0)
