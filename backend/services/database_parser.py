@@ -683,6 +683,7 @@ class DatabaseParser:
                         'account_details': self._get_account_details(mapping.get('accounts_included', ''), current_accounts) if mapping.get('show_tag', False) else None,
                         'show_amount': self._normalize_show_amount(mapping.get('show_amount', True)),
                         'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated', True)),
+                        'always_show': self._normalize_always_show(mapping.get('always_show', False)),
                         'style': mapping.get('style'),
                         'explainer': mapping.get('explainer', ''),
                         'block': mapping.get('block', ''),
@@ -757,7 +758,7 @@ class DatabaseParser:
                         'show_amount': self._normalize_show_amount(mapping.get('show_amount')),
                         'style': mapping.get('style', 'NORMAL'),
                         'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated')),
-                        'always_show': mapping.get('always_show', False),
+                        'always_show': self._normalize_always_show(mapping.get('always_show', False)),
                         'explainer': mapping.get('explainer', ''),
                         'block': mapping.get('block', ''),
                         'header': mapping.get('header', False),
@@ -796,6 +797,20 @@ class DatabaseParser:
         if isinstance(value, str):
             return value.upper() == 'TRUE'
         return bool(value)
+    
+    def _normalize_always_show(self, value: Any) -> str:
+        """Normalize always_show to consistent string values."""
+        if isinstance(value, bool):
+            return 'true' if value else 'false'
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in ('never', 'false', 'no'):
+                return 'never'
+            elif normalized in ('true', 'always', 'yes'):
+                return 'true'
+            else:
+                return 'false'  # Default for unknown values
+        return 'false'
     
     def calculate_ink2_variable_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None, br_data: Optional[List[Dict[str, Any]]] = None) -> float:
         """

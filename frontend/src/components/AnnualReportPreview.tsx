@@ -581,8 +581,11 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                   
                   // Check individual row visibility rules
                   if (item.show_amount === 'NEVER') return false;
-                  if (item.always_show === true || item.always_show === 'TRUE') return true;
-                  if (item.always_show === 'never' || item.always_show === 'NEVER') return false;
+                  
+                  // Handle always_show with consistent logic  
+                  // Backend normalizes to 'true', 'false', or 'never'
+                  if (item.always_show === 'true') return true;
+                  if (item.always_show === 'never') return false;
                   
                   // Default: show only if amount is non-zero
                   return item.amount !== null && item.amount !== 0 && item.amount !== -0;
@@ -590,14 +593,25 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
               };
               
               return allData.filter((item: any) => {
+                // Debug logging to see what we're getting
+                if (item.variable_name && (item.variable_name.includes('INK4.15') || item.variable_name.includes('INK4.21') || item.variable_name.includes('INK_bokford_skatt'))) {
+                  console.log(`DEBUG ${item.variable_name}:`, {
+                    always_show: item.always_show,
+                    always_show_type: typeof item.always_show,
+                    show_amount: item.show_amount,
+                    amount: item.amount
+                  });
+                }
+                
                 // Always exclude show_amount = NEVER
                 if (item.show_amount === 'NEVER') return false;
                 
-                // Check always_show rules first
-                if (item.always_show === true || item.always_show === 'TRUE') return true;
-                if (item.always_show === 'never' || item.always_show === 'NEVER') return false;
+                // Check always_show rules first - these override everything
+                // Backend normalizes to 'true', 'false', or 'never'
+                if (item.always_show === 'true') return true;
+                if (item.always_show === 'never') return false;
                 
-                // If this is a header, check if its block has any content to show
+                // If this is a header with always_show = false, check if its block has any content to show
                 if (item.header === true) {
                   return shouldShowBlockContent(item.block);
                 }
