@@ -728,6 +728,12 @@ class DatabaseParser:
         sorted_mappings = sorted(self.ink2_mappings, key=lambda x: x.get('row_id', 0))
         
         ink_values: Dict[str, float] = {}
+        
+        # Inject justering_sarskild_loneskatt into ink_values if provided
+        if 'justering_sarskild_loneskatt' in manual_amounts:
+            ink_values['justering_sarskild_loneskatt'] = manual_amounts['justering_sarskild_loneskatt']
+            print(f"Injected justering_sarskild_loneskatt: {manual_amounts['justering_sarskild_loneskatt']}")
+        
         for mapping in sorted_mappings:
             try:
                 variable_name = mapping.get('variable_name', '')
