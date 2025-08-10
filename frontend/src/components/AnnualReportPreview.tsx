@@ -731,10 +731,16 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                       />
                     ) : (
                       (item.amount !== null && item.amount !== undefined) ? 
-                        (item.amount === 0 || item.amount === -0 ? '0,00' : new Intl.NumberFormat('sv-SE', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        }).format(item.amount)) : '0,00'
+                        (item.amount === 0 || item.amount === -0 ? '0' : (() => {
+                          // Show integers (no decimals) for these specific variables
+                          const integerVariables = ['INK_skattemassigt_resultat', 'INK_beraknad_skatt', 'INK4.15', 'INK4.16'];
+                          const shouldShowInteger = integerVariables.includes(item.variable_name);
+                          
+                          return new Intl.NumberFormat('sv-SE', {
+                            minimumFractionDigits: shouldShowInteger ? 0 : 2,
+                            maximumFractionDigits: shouldShowInteger ? 0 : 2
+                          }).format(item.amount);
+                        })()) : '0'
                     )
                   }
                 </span>

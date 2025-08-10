@@ -885,8 +885,8 @@ class DatabaseParser:
                 + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
                 + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
             )
-            # Apply max(0, value) then FLOOR - can never be negative
-            return float(max(0, int(total // 100) * 100))
+            # Apply max(0, value) with normal rounding - can never be negative
+            return float(max(0, round(total)))
         if variable_name == 'INK4.16':
             def v(name: str) -> float:
                 if not ink_values:
@@ -902,8 +902,8 @@ class DatabaseParser:
                 + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
                 + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
             )
-            # Apply max(0, abs(value)) - can never be negative, but handle the logic for loss carryforward
-            return float(max(0, -total if total < 0 else 0))
+            # Apply max(0, abs(value)) with normal rounding - can never be negative, but handle the logic for loss carryforward
+            return float(max(0, round(-total if total < 0 else 0)))
         if variable_name == 'INK_bokford_skatt':
             return rr('SkattAretsResultat')
         if variable_name == 'INK_beraknad_skatt':
