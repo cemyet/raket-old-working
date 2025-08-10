@@ -594,12 +594,14 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
               
               return allData.filter((item: any) => {
                 // Debug logging to see what we're getting
-                if (item.variable_name && (item.variable_name.includes('INK4.15') || item.variable_name.includes('INK4.21') || item.variable_name.includes('INK_bokford_skatt'))) {
+                if (item.variable_name && (item.variable_name.includes('INK4.15') || item.variable_name.includes('INK4.16') || item.variable_name.includes('INK4.21') || item.variable_name.includes('INK_bokford_skatt'))) {
                   console.log(`DEBUG ${item.variable_name}:`, {
                     always_show: item.always_show,
                     always_show_type: typeof item.always_show,
                     show_amount: item.show_amount,
-                    amount: item.amount
+                    amount: item.amount,
+                    header: item.header,
+                    block: item.block
                   });
                 }
                 
