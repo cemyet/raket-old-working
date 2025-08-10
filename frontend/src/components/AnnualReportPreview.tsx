@@ -692,7 +692,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     (editableAmounts && !item.is_calculated && item.show_amount) ? (
                       <input
                         type="number"
-                        className="w-32 px-1 py-1 text-sm border border-gray-400 rounded text-right font-medium h-7"
+                        className="w-32 px-1 py-1 text-sm border border-gray-400 rounded text-right font-medium h-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
                         onChange={(e) => {
                           // Only allow positive values for manual editing
@@ -763,9 +763,12 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                     // Handle tax update - this would typically update the chat state
                     console.log('Updated amounts:', editedAmounts);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 flex items-center gap-2"
                 >
                   Godkänn och uppdatera skatt
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"/>
+                  </svg>
                 </Button>
               </div>
             )}
