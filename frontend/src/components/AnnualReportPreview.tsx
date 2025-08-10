@@ -19,6 +19,7 @@ interface CompanyData {
   location: string;
   date: string;
   boardMembers: Array<{ name: string; personalNumber: string }>;
+  ink2Data?: any[]; // INK2 tax calculation data
   seFileData?: SEData & {
     current_accounts?: Record<string, number>;
     annualReport?: {
@@ -171,7 +172,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
   const seFileData = companyData.seFileData;
   const rrData = seFileData?.rr_data || [];
   const brData = seFileData?.br_data || [];
-  const ink2Data = seFileData?.ink2_data || [];
+  const ink2Data = companyData.ink2Data || seFileData?.ink2_data || [];
   const companyInfo = seFileData?.company_info || {};
 
   // Capture original amounts when editableAmounts becomes true (for undo functionality)
@@ -559,7 +560,23 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
 
             {/* Tax Calculation Rows */}
             {(() => {
-              const allData = recalculatedData.length > 0 ? recalculatedData : seFileData.ink2_data;
+              const allData = recalculatedData.length > 0 ? recalculatedData : ink2Data;
+              
+              // Debug: Check if INK_sarskild_loneskatt is in the data
+              const sarskildRow = allData.find((item: any) => item.variable_name === 'INK_sarskild_loneskatt');
+              if (sarskildRow) {
+                console.log('DEBUG INK_sarskild_loneskatt FOUND:', {
+                  amount: sarskildRow.amount,
+                  show_amount: sarskildRow.show_amount,
+                  always_show: sarskildRow.always_show,
+                  always_show_type: typeof sarskildRow.always_show,
+                  block: sarskildRow.block,
+                  header: sarskildRow.header
+                });
+              } else {
+                console.log('DEBUG INK_sarskild_loneskatt NOT FOUND in allData. Total rows:', allData.length);
+                console.log('DEBUG All variable names:', allData.map((item: any) => item.variable_name));
+              }
               
               // Helper function to check if any row in a block should be shown
               const shouldShowBlockContent = (blockName: string): boolean => {

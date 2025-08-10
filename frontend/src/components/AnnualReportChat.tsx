@@ -248,6 +248,9 @@ export function AnnualReportChat() {
         justeringSarskildLoneskatt: adjustment
       }));
       
+      // Trigger recalculation with pension tax adjustment
+      triggerPensionTaxRecalculation(adjustment);
+      
       setTimeout(() => {
         addMessage("Perfekt, nu är den särskilda löneskatten justerad som du kan se i skatteuträkning till höger.", true, "✅");
         setTimeout(() => {
@@ -287,6 +290,9 @@ export function AnnualReportChat() {
       justeringSarskildLoneskatt: adjustment
     }));
     
+    // Trigger recalculation with pension tax adjustment
+    triggerPensionTaxRecalculation(adjustment);
+    
     setTimeout(() => {
       addMessage("Perfekt, nu är den särskilda löneskatten justerad som du kan se i skatteuträkning till höger.", true, "✅");
       setTimeout(() => {
@@ -296,6 +302,49 @@ export function AnnualReportChat() {
     
     setShowInput(false);
     setInputValue("");
+  };
+
+  const triggerPensionTaxRecalculation = async (adjustment: number) => {
+    console.log('🔥 triggerPensionTaxRecalculation called with adjustment:', adjustment);
+    if (!companyData.seFileData) {
+      console.log('❌ No seFileData available for recalculation');
+      return;
+    }
+    
+    try {
+      const result = await apiService.recalculateInk2({
+        current_accounts: companyData.seFileData.current_accounts || {},
+        fiscal_year: companyData.fiscalYear,
+        rr_data: companyData.seFileData.rr_data || [],
+        br_data: companyData.seFileData.br_data || [],
+        manual_amounts: {}, // No manual edits, just pension tax adjustment
+        justering_sarskild_loneskatt: adjustment
+      });
+      
+      if (result.success) {
+        console.log('DEBUG: Pension tax recalculation successful');
+        console.log('DEBUG: New ink2_data length:', result.ink2_data.length);
+        
+        // Check if INK_sarskild_loneskatt is in the response
+        const sarskildRow = result.ink2_data.find((item: any) => item.variable_name === 'INK_sarskild_loneskatt');
+        if (sarskildRow) {
+          console.log('DEBUG: INK_sarskild_loneskatt in API response:', sarskildRow);
+        } else {
+          console.log('DEBUG: INK_sarskild_loneskatt NOT in API response');
+          console.log('DEBUG: All variables in response:', result.ink2_data.map((item: any) => item.variable_name));
+        }
+        
+        // Update company data with new INK2 data including the pension tax adjustment
+        setCompanyData(prev => ({
+          ...prev,
+          ink2Data: result.ink2_data,
+          // Update calculated tax amounts from the recalculated data
+          inkBeraknadSkatt: result.ink2_data.find((item: any) => item.variable_name === 'INK_beraknad_skatt')?.amount || prev.inkBeraknadSkatt
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to recalculate pension tax:', error);
+    }
   };
 
   const handleTaxChoice = (choice: string) => {
