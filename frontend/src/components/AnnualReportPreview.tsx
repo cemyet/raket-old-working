@@ -101,6 +101,8 @@ interface CompanyData {
       style?: string;
       is_calculated?: boolean;
       explainer?: string;
+      block?: string;
+      header?: boolean;
       account_details?: Array<{
         account_id: string;
         account_text: string;
@@ -159,7 +161,7 @@ interface AnnualReportPreviewProps {
 export function AnnualReportPreview({ companyData, currentStep, editableAmounts = false }: AnnualReportPreviewProps) {
   const [showAllRR, setShowAllRR] = useState(false);
   const [showAllBR, setShowAllBR] = useState(false);
-  const [showAllINK2, setShowAllINK2] = useState(false);
+
   const [editedAmounts, setEditedAmounts] = useState<Record<string, number>>({});
   const [originalAmounts, setOriginalAmounts] = useState<Record<string, number>>({});
   const [recalculatedData, setRecalculatedData] = useState<any[]>([]);
@@ -556,16 +558,8 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
         {/* Tax Calculation Section */}
         {currentStep >= 0.3 && seFileData?.ink2_data && seFileData.ink2_data.length > 0 && (
           <div className="space-y-4 bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200" data-section="tax-calculation">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Skatteberäkning</h2>
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">Visa alla rader</span>
-                <Switch
-                  checked={showAllINK2}
-                  onCheckedChange={setShowAllINK2}
-                  className={`${showAllINK2 ? 'bg-green-500' : 'bg-gray-300'}`}
-                />
-              </div>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground border-b pb-2">Skatteberäkning</h2>
             </div>
             
             {/* Column Headers */}
@@ -575,28 +569,43 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
             </div>
 
             {/* Tax Calculation Rows */}
-            {(recalculatedData.length > 0 ? recalculatedData : seFileData.ink2_data).filter((item: any) => {
-              // Always exclude show_amount = NEVER
-              if (item.show_amount === 'NEVER') return false;
+            {(() => {
+              const allData = recalculatedData.length > 0 ? recalculatedData : seFileData.ink2_data;
               
-              if (!showAllINK2) {
-                // Improved logic: Headers always show, content only if non-zero
-                const isStyleHeader = item.style && ['H0', 'H1', 'H2', 'H3', 'S1', 'S2', 'S3', 'TH1', 'TH2', 'TH3', 'TS1', 'TS2', 'TS3'].includes(item.style);
-                const isAlwaysShow = item.always_show === true || item.always_show === 'TRUE' || item.always_show === 'true';
+              // Helper function to check if any row in a block should be shown
+              const shouldShowBlockContent = (blockName: string): boolean => {
+                if (!blockName) return true; // Items without block are always evaluated individually
                 
-                // Headers (style-based or always_show) are always shown
-                if (isStyleHeader || isAlwaysShow) {
-                  return true;
+                return allData.some((item: any) => {
+                  if (item.block !== blockName || item.header === true) return false; // Skip headers and other blocks
+                  
+                  // Check individual row visibility rules
+                  if (item.show_amount === 'NEVER') return false;
+                  if (item.always_show === true || item.always_show === 'TRUE') return true;
+                  if (item.always_show === 'never' || item.always_show === 'NEVER') return false;
+                  
+                  // Default: show only if amount is non-zero
+                  return item.amount !== null && item.amount !== 0 && item.amount !== -0;
+                });
+              };
+              
+              return allData.filter((item: any) => {
+                // Always exclude show_amount = NEVER
+                if (item.show_amount === 'NEVER') return false;
+                
+                // Check always_show rules first
+                if (item.always_show === true || item.always_show === 'TRUE') return true;
+                if (item.always_show === 'never' || item.always_show === 'NEVER') return false;
+                
+                // If this is a header, check if its block has any content to show
+                if (item.header === true) {
+                  return shouldShowBlockContent(item.block);
                 }
                 
-                // For content rows, only show if amount is non-zero
-                const hasContent = item.amount !== null && item.amount !== 0 && item.amount !== -0;
-                return hasContent;
-              }
-              
-              // Toggle ON: show ALL rows (including zero amounts) except NEVER
-              return true;
-            }).map((item, index) => (
+                // For non-headers with always_show = false, show only if amount is non-zero
+                return item.amount !== null && item.amount !== 0 && item.amount !== -0;
+              });
+            })().map((item, index) => (
               <div
                 key={index}
                 className={getInkStyleClasses(item.style).className}

@@ -694,7 +694,9 @@ class DatabaseParser:
                         'show_amount': self._normalize_show_amount(mapping.get('show_amount', True)),
                         'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated', True)),
                         'style': mapping.get('style'),
-                        'explainer': mapping.get('explainer', '')
+                        'explainer': mapping.get('explainer', ''),
+                        'block': mapping.get('block', ''),
+                        'header': mapping.get('header', False)
                     }
                     results.append(result)
                 # store for later formula dependencies
@@ -775,6 +777,8 @@ class DatabaseParser:
                         'is_calculated': self._normalize_is_calculated(mapping.get('is_calculated')),
                         'always_show': mapping.get('always_show', False),
                         'explainer': mapping.get('explainer', ''),
+                        'block': mapping.get('block', ''),
+                        'header': mapping.get('header', False),
                         'account_details': account_details
                     })
                 
