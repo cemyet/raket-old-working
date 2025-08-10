@@ -733,7 +733,7 @@ class DatabaseParser:
                 variable_name = mapping.get('variable_name', '')
                 
                 # Force recalculation of dependent summary values even if not manually edited
-                force_recalculate = variable_name in ['INK_skattemassigt_resultat', 'INK_beraknad_skatt', 'INK4.15', 'INK4.16']
+                force_recalculate = variable_name in ['INK_skattemassigt_resultat', 'INK_beraknad_skatt']
                 
                 # Check if this value has been manually overridden (but only for non-calculated fields)
                 if variable_name in manual_amounts and not force_recalculate:
@@ -848,62 +848,6 @@ class DatabaseParser:
                         prev = float(val) if val is not None else 0.0
                         break
             return prev * rate
-        if variable_name == 'INK_skattemassigt_resultat':
-            def v(name: str) -> float:
-                if not ink_values:
-                    return 0.0
-                return float(ink_values.get(name, 0.0))
-            total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b')
-                + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)')
-                + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
-            )
-            # Apply FLOOR(total, 100) - round down to nearest 100 per Skatteverket rules
-            # 560758 -> 560700, 560799 -> 560700, 560701 -> 560700
-            floored_total = int(total // 100) * 100
-            print(f"INK_skattemassigt_resultat: raw_total={total}, floored={floored_total}")
-            return float(floored_total)
-        if variable_name == 'INK4.15':
-            def v(name: str) -> float:
-                if not ink_values:
-                    return 0.0
-                return float(ink_values.get(name, 0.0))
-            total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)') + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
-            )
-            # Apply max(0, value) with normal rounding - can never be negative
-            return float(max(0, round(total)))
-        if variable_name == 'INK4.16':
-            def v(name: str) -> float:
-                if not ink_values:
-                    return 0.0
-                return float(ink_values.get(name, 0.0))
-            total = (
-                v('INK4.1') + v('INK4.2') + v('INK4.3a') + v('INK4.3b') + v('INK4.3c')
-                + v('INK4.4a') + v('INK4.4b') + v('INK4.5a') + v('INK4.5b') + v('INK4.5c')
-                + v('INK4.6a') + v('INK4.6b') + v('INK4.6c') + v('INK4.6d') + v('INK4.6e')
-                + v('INK4.7a') + v('INK4.7b') + v('INK4.7c') + v('INK4.7d') + v('INK4.7e') + v('INK4.7f')
-                + v('INK4.8a') + v('INK4.8b') + v('INK4.8c') + v('INK4.8d')
-                + v('INK4.9(+)') + v('INK4.9(-)') + v('INK4.10(+)') + v('INK4.10(-)')
-                + v('INK4.11') + v('INK4.12') + v('INK4.13(+)') + v('INK4.13(-)')
-                + v('INK4.14a') + v('INK4.14b') + v('INK4.14c')
-            )
-            # Apply max(0, abs(value)) with normal rounding - can never be negative, but handle the logic for loss carryforward
-            return float(max(0, round(-total if total < 0 else 0)))
         if variable_name == 'INK_bokford_skatt':
             return rr('SkattAretsResultat')
         if variable_name == 'INK_beraknad_skatt':
@@ -924,8 +868,16 @@ class DatabaseParser:
         if mapping.get('calculation_formula'):
             return self.calculate_ink2_formula_value(mapping, accounts, fiscal_year, rr_data, ink_values)
         
-        # Otherwise, sum the included accounts
-        return self.sum_included_accounts(mapping.get('accounts_included', ''), accounts)
+        # Otherwise, sum the included accounts (use absolute values for positive-only variables)
+        account_sum = self.sum_included_accounts(mapping.get('accounts_included', ''), accounts)
+        # Variables that should always be positive (account-based calculations)
+        positive_only_variables = [
+            'INK4.3c', 'INK4.4a', 'INK4.5b', 'INK4.5c', 
+            'INK4.6a', 'INK4.6c', 'INK4.21'
+        ]
+        if variable_name in positive_only_variables:
+            return abs(account_sum)
+        return account_sum
     
     def calculate_ink2_formula_value(self, mapping: Dict[str, Any], accounts: Dict[str, float], fiscal_year: int = None, rr_data: List[Dict[str, Any]] = None, ink_values: Optional[Dict[str, float]] = None) -> float:
         """

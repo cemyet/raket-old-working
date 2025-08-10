@@ -188,19 +188,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
     }
   }, [editableAmounts, ink2Data, recalculatedData, originalAmounts]);
 
-  // Function to validate and correct sign based on mapping
-  const validateAndCorrectSign = (value: number, item: any): number => {
-    // TODO: Get sign requirement from item.sign_requirement or similar field
-    // For now, implement basic logic for known patterns
-    const variableName = item.variable_name;
-    
-    // Items that should be negative (expenses, losses)
-    if (variableName?.includes('14') && variableName?.includes('(-)')  && value > 0) {
-      return -value; // Force negative for loss carryforward
-    }
-    
-    return value; // Keep as entered for most cases
-  };
+
 
   // Undo all changes
   const handleUndo = async () => {
@@ -706,13 +694,18 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                         type="number"
                         className="w-32 px-1 py-1 text-sm border border-gray-400 rounded text-right font-medium h-7"
                         value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
-                        onChange={(e) => setEditedAmounts(prev => ({
-                          ...prev,
-                          [item.variable_name]: parseFloat(e.target.value) || 0
-                        }))}
+                        onChange={(e) => {
+                          // Only allow positive values for manual editing
+                          const value = Math.abs(parseFloat(e.target.value)) || 0;
+                          setEditedAmounts(prev => ({
+                            ...prev,
+                            [item.variable_name]: value
+                          }));
+                        }}
                         onBlur={(e) => {
                           const rawValue = parseFloat(e.target.value) || 0;
-                          const correctedValue = validateAndCorrectSign(rawValue, item);
+                          // Force positive values only
+                          const correctedValue = Math.abs(rawValue);
                           const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
                           setEditedAmounts(updatedAmounts);
                           recalculateValues(updatedAmounts);
@@ -720,7 +713,8 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             const rawValue = parseFloat(e.currentTarget.value) || 0;
-                            const correctedValue = validateAndCorrectSign(rawValue, item);
+                            // Force positive values only
+                            const correctedValue = Math.abs(rawValue);
                             const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
                             setEditedAmounts(updatedAmounts);
                             recalculateValues(updatedAmounts);
@@ -728,6 +722,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                           }
                         }}
                         step="0.01"
+                        min="0"
                       />
                     ) : (
                       (item.amount !== null && item.amount !== undefined) ? 
