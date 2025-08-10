@@ -652,6 +652,8 @@ class DatabaseParser:
         Parse INK2 tax calculation data using database mappings.
         Returns simplified structure: row_title and amount only.
         """
+        # Force reload mappings to get fresh data from database
+        self._load_mappings()
         if not self.ink2_mappings:
             print("No INK2 mappings available")
             return []
@@ -707,6 +709,8 @@ class DatabaseParser:
         """
         Parse INK2 tax calculation data with manual amount overrides for dynamic recalculation.
         """
+        # Force reload mappings to get fresh data from database
+        self._load_mappings()
         if not self.ink2_mappings:
             print("No INK2 mappings available")
             return []
