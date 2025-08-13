@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'https://raketrapport.se';  // Custom domain set up in Railway
+export const API_BASE_URL = 'https://web-production-39242.up.railway.app';  // Railway backend deployment
 
 export const API_ENDPOINTS = {
   uploadSeFile: `${API_BASE_URL}/upload-se-file`,
