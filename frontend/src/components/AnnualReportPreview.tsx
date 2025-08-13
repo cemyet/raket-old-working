@@ -181,7 +181,7 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
       const currentData = recalculatedData.length > 0 ? recalculatedData : ink2Data;
       const amounts: Record<string, number> = {};
       currentData.forEach((item: any) => {
-        if (!item.is_calculated && item.show_amount) {
+        if ((!item.is_calculated || item.variable_name === 'INK_sarskild_loneskatt') && item.show_amount) {
           amounts[item.variable_name] = item.amount || 0;
         }
       });
@@ -706,14 +706,19 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                 </div>
                  <span className="text-right font-medium">
                   {!item.show_amount ? '' : 
-                    (editableAmounts && !item.is_calculated && item.show_amount) ? (
+                    (editableAmounts && (!item.is_calculated || item.variable_name === 'INK_sarskild_loneskatt') && item.show_amount) ? (
                       <input
                         type="number"
                         className="w-32 px-1 py-1 text-sm border border-gray-400 rounded text-right font-medium h-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        value={editedAmounts[item.variable_name] ?? item.amount ?? 0}
+                        value={
+                          item.variable_name === 'INK_sarskild_loneskatt' 
+                            ? Math.abs(editedAmounts[item.variable_name] ?? item.amount ?? 0)
+                            : (editedAmounts[item.variable_name] ?? item.amount ?? 0)
+                        }
                         onChange={(e) => {
                           // Only allow positive values for manual editing
-                          const value = Math.abs(parseFloat(e.target.value)) || 0;
+                          const rawValue = Math.abs(parseFloat(e.target.value)) || 0;
+                          const value = item.variable_name === 'INK_sarskild_loneskatt' ? -rawValue : rawValue;
                           setEditedAmounts(prev => ({
                             ...prev,
                             [item.variable_name]: value
@@ -723,7 +728,8 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                           const rawValue = parseFloat(e.target.value) || 0;
                           // Force positive values only
                           const correctedValue = Math.abs(rawValue);
-                          const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
+                          const finalValue = item.variable_name === 'INK_sarskild_loneskatt' ? -correctedValue : correctedValue;
+                          const updatedAmounts = { ...editedAmounts, [item.variable_name]: finalValue };
                           setEditedAmounts(updatedAmounts);
                           recalculateValues(updatedAmounts);
                         }}
@@ -732,7 +738,8 @@ export function AnnualReportPreview({ companyData, currentStep, editableAmounts 
                             const rawValue = parseFloat(e.currentTarget.value) || 0;
                             // Force positive values only
                             const correctedValue = Math.abs(rawValue);
-                            const updatedAmounts = { ...editedAmounts, [item.variable_name]: correctedValue };
+                            const finalValue = item.variable_name === 'INK_sarskild_loneskatt' ? -correctedValue : correctedValue;
+                            const updatedAmounts = { ...editedAmounts, [item.variable_name]: finalValue };
                             setEditedAmounts(updatedAmounts);
                             recalculateValues(updatedAmounts);
                             e.currentTarget.blur(); // Remove focus
