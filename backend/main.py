@@ -31,6 +31,7 @@ app.add_middleware(
         "https://raketrapport.se",
         "https://www.raketrapport.se",
         "https://raket-arsredovisning.vercel.app",
+        "https://raket-old-working.vercel.app",  # New Vercel frontend
         "https://raketrapport-production.up.railway.app"  # Railway backend URL
     ],
     allow_credentials=True,
